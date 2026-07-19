@@ -19,7 +19,13 @@ const formFields = document.getElementById('brief-form');
 
 // Sample briefs injected from server
 let samples = {};
-let currentMode = 'structured';
+let currentMode = 'freeform';
+
+// Initialize: show freeform, hide structured form
+freeformInput.classList.remove('hidden');
+formFields.classList.add('hidden');
+sampleSelect.closest('.sample-picker').style.opacity = '0.4';
+sampleSelect.closest('.sample-picker').style.pointerEvents = 'none';
 
 // Load samples on page load
 fetch('/api/samples')
