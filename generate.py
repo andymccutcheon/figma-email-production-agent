@@ -34,6 +34,7 @@ DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
 
 # Claude fallback
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
 
 
 # ── MJML Compilation ───────────────────────────────────────
@@ -279,7 +280,13 @@ Generate {count} subject line variations. Return only valid JSON."""
 def generate_email(brief: EmailBrief, api_key: Optional[str] = None) -> GeneratedEmail:
     """Generate an email from a brief. Routes to DeepSeek, Claude, or demo."""
     if DEEPSEEK_API_KEY:
-        return _generate_with_deepseek(brief)
+        try:
+            return _generate_with_deepseek(brief)
+        except Exception as e:
+            # Fall through to Claude or demo if DeepSeek fails
+            print(f"[generate] DeepSeek failed: {e}")
+    if ANTHROPIC_API_KEY:
+        return _generate_with_claude(brief, ANTHROPIC_API_KEY)
     if api_key:
         return _generate_with_claude(brief, api_key)
     return _generate_demo(brief)
@@ -293,7 +300,7 @@ def _generate_with_claude(brief: EmailBrief, api_key: str) -> GeneratedEmail:
     system_prompt = build_system_prompt(brief)
 
     message = client.messages.create(
-        model="claude-sonnet-5",
+        model=CLAUDE_MODEL,
         max_tokens=4096,
         system=system_prompt,
         messages=[{"role": "user", "content": "Generate the email based on the brief and system instructions. Return only valid JSON."}]
@@ -332,6 +339,8 @@ def get_active_provider() -> str:
     if ANTHROPIC_API_KEY:
         return "Claude"
     return "demo"
+
+LAST_USED_PROVIDER = "demo"
 
 
 # ── Demo Mode (MJML-based) ─────────────────────────────────
