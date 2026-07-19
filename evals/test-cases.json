@@ -1,0 +1,103 @@
+{
+  "test_cases": [
+    {
+      "id": "TC-001",
+      "name": "Happy path: Product launch email",
+      "brief": "brief-01.md",
+      "expected": {
+        "status": "generated",
+        "brand_check": "passed",
+        "confidence_min": 3,
+        "subject_max_chars": 50,
+        "html_contains": ["figma.com", "unsubscribe", "#7B61FF", "Helvetica Neue"],
+        "html_not_contains": ["click here", "F24822"]
+      }
+    },
+    {
+      "id": "TC-002",
+      "name": "Happy path: Event invitation",
+      "brief": "brief-02.md",
+      "expected": {
+        "status": "generated",
+        "brand_check": "passed",
+        "template": "event_invite",
+        "cta_text_length": "2-4 words"
+      }
+    },
+    {
+      "id": "TC-003",
+      "name": "Happy path: Feature update",
+      "brief": "brief-03.md",
+      "expected": {
+        "status": "generated",
+        "brand_check": "passed",
+        "template": "feature_update"
+      }
+    },
+    {
+      "id": "TC-004",
+      "name": "Edge case: Malformed brief with missing fields",
+      "brief": "brief-bad.md",
+      "expected": {
+        "status": "failed",
+        "errors_present": true,
+        "error_contains": ["campaign_name", "audience", "goal", "cta", "tone"]
+      }
+    },
+    {
+      "id": "TC-005",
+      "name": "Edge case: Brief with forbidden phrases in context",
+      "input": {
+        "campaign_name": "Revolutionary Update",
+        "audience": "All users",
+        "goal": "Announce the revolutionary new game-changing feature",
+        "key_message": "This best-in-class update is revolutionary",
+        "cta_text": "Try it",
+        "cta_url": "https://figma.com",
+        "tone": "feature_update",
+        "template_type": "feature_update",
+        "additional_context": "synergy and deep dive required"
+      },
+      "expected": {
+        "brand_check": "warnings_present",
+        "warning_contains": ["forbidden"]
+      }
+    },
+    {
+      "id": "TC-006",
+      "name": "Edge case: CTA longer than 4 words",
+      "input": {
+        "campaign_name": "Test",
+        "audience": "Designers",
+        "goal": "Drive signups for the new feature",
+        "key_message": "Something exciting",
+        "cta_text": "Click here to learn more about this",
+        "cta_url": "https://figma.com",
+        "tone": "educational",
+        "template_type": "educational"
+      },
+      "expected": {
+        "status": "failed",
+        "error_contains": ["cta_text must be 2-4 words"]
+      }
+    },
+    {
+      "id": "TC-007",
+      "name": "Edge case: Missing images with alt text",
+      "input": {
+        "campaign_name": "Image Test",
+        "audience": "All users",
+        "goal": "Test image handling in emails",
+        "key_message": "Images should have alt text",
+        "cta_text": "See more",
+        "cta_url": "https://figma.com",
+        "tone": "educational",
+        "template_type": "educational"
+      },
+      "expected": {
+        "brand_check": "alt_text_present",
+        "html_contains": ["alt="]
+      }
+    }
+  ]
+}

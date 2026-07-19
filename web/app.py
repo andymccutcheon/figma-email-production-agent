@@ -1,0 +1,202 @@
+"""
+Flask web app for the Email Production Agent.
+Wraps the existing pipeline modules for a browser-based demo.
+"""
+
+import os
+import sys
+import json
+
+# Load .env before imports so generate.py picks it up
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+
+# Ensure parent directory is on path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from flask import Flask, render_template, request, jsonify
+from intake import EmailBrief
+from generate import generate_email, GeneratedEmail, get_active_provider, generate_subject_variations, DEEPSEEK_API_KEY
+from brand_check import BrandChecker, BrandCheckReport
+from preview import render_preview
+
+app = Flask(__name__)
+
+SAMPLE_BRIEFS = {
+    "product_launch": {
+        "campaign_name": "Figma AI Launch",
+        "audience": "Design leads and heads of design at companies with 50+ employees",
+        "goal": "Drive trial signups for Figma AI features. We want 500 new AI feature activations in the first week.",
+        "key_message": "Figma AI is now available — autocomplete your designs, generate variations from text prompts, and let AI handle the tedious layers so you can focus on the creative work.",
+        "cta_text": "Try Figma AI",
+        "cta_url": "https://figma.com/ai",
+        "tone": "product_launch",
+        "template_type": "product_launch",
+        "additional_context": "This is our biggest launch of Q3. The AI features have been in beta for 3 months with overwhelmingly positive feedback.",
+    },
+    "event": {
+        "campaign_name": "Config 2026 Early Access",
+        "audience": "Past Config attendees and Figma power users in US and Europe",
+        "goal": "Drive early-bird registrations before the general public announcement",
+        "key_message": "Config is back. Join 10,000+ designers and builders in San Francisco for two days of keynotes, workshops, and the future of design tools.",
+        "cta_text": "Register early",
+        "cta_url": "https://config.figma.com/2026",
+        "tone": "event",
+        "template_type": "event_invite",
+        "event_date": "June 10-11, 2026",
+        "additional_context": "Early bird pricing is $399 (saves $200). Keynote speaker lineup announced next week.",
+    },
+    "feature_update": {
+        "campaign_name": "Variables Everywhere",
+        "audience": "All Figma users who have used components in the last 90 days",
+        "goal": "Drive adoption of the new variables system. Target: 20% of component users try variables within 30 days.",
+        "key_message": "Variables now work across all component properties — colors, text, visibility, and layout. Build one component, deploy it everywhere.",
+        "cta_text": "Learn more",
+        "cta_url": "https://help.figma.com/variables",
+        "tone": "feature_update",
+        "template_type": "feature_update",
+        "additional_context": "This was our #1 community request. The old system only supported color variables.",
+    },
+    "educational": {
+        "campaign_name": "Design Systems at Scale",
+        "audience": "Design system teams and design ops leaders",
+        "goal": "Share best practices for scaling design systems. Drive engagement with Figma's design system features.",
+        "key_message": "The best teams treat design systems as products, not projects. Here's how they do it — and how Figma helps.",
+        "cta_text": "Read the guide",
+        "cta_url": "https://figma.com/design-systems",
+        "tone": "educational",
+        "template_type": "educational",
+        "additional_context": "Based on interviews with 50+ design system teams. Includes real examples from Stripe, Spotify, and Airbnb.",
+    },
+}
+
+
+def get_api_key():
+    """Get API key from environment if available."""
+    return os.environ.get("ANTHROPIC_API_KEY")
+
+
+@app.route("/")
+def index():
+    """Main page: brief form + results area."""
+    return render_template("index.html", samples=SAMPLE_BRIEFS)
+
+
+@app.route("/api/generate", methods=["POST"])
+def api_generate():
+    """Generate an email from a brief. Returns JSON with the full result."""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    # Build brief from form data
+    try:
+        brief = EmailBrief(
+            campaign_name=data.get("campaign_name", ""),
+            audience=data.get("audience", ""),
+            goal=data.get("goal", ""),
+            key_message=data.get("key_message", ""),
+            cta_text=data.get("cta_text", ""),
+            cta_url=data.get("cta_url", ""),
+            tone=data.get("tone", "educational"),
+            template_type=data.get("template_type", "educational"),
+            additional_context=data.get("additional_context", ""),
+            event_date=data.get("event_date"),
+        )
+    except Exception as e:
+        return jsonify({"error": f"Invalid brief: {str(e)}"}), 400
+
+    # Validate
+    errors = brief.validate()
+    if errors:
+        return jsonify({"status": "failed", "errors": errors, "step": "validation"})
+
+    # Generate
+    api_key = get_api_key()
+    try:
+        email = generate_email(brief, api_key=api_key)
+    except Exception as e:
+        return jsonify({"status": "failed", "errors": [f"Generation error: {str(e)}"], "step": "generation"})
+
+    # Brand check
+    checker = BrandChecker()
+    brand_report = checker.check(email.subject_line, email.html_body, email.plain_text)
+
+    # Render preview HTML string
+    preview_html = render_preview(email, brand_report)
+
+    # Build response
+    violations = []
+    for v in brand_report.violations:
+        violations.append({"severity": v.severity, "rule": v.rule, "detail": v.detail, "location": v.location})
+    for w in brand_report.warnings:
+        violations.append({"severity": w.severity, "rule": w.rule, "detail": w.detail, "location": w.location})
+
+    # Try Customer.io sync
+    from sync import sync_to_customer_io
+    sync_result = sync_to_customer_io(email, brief)
+
+    return jsonify({
+        "status": "generated",
+        "subject_line": email.subject_line,
+        "preview_text": email.preview_text,
+        "html_body": email.html_body,
+        "plain_text": email.plain_text,
+        "template_used": email.template_used,
+        "confidence_score": email.confidence_score,
+        "brand_passed": brand_report.passed,
+        "brand_violations": violations,
+        "preview_html": preview_html,
+        "provider": get_active_provider(),
+        "sync": {
+            "success": sync_result.success,
+            "provider": sync_result.provider,
+            "detail": sync_result.detail,
+            "preview_url": sync_result.preview_url,
+        },
+    })
+
+
+@app.route("/api/samples", methods=["GET"])
+def api_samples():
+    """Return sample briefs for the demo."""
+    return jsonify(SAMPLE_BRIEFS)
+
+
+@app.route("/api/subject-variations", methods=["POST"])
+def api_subject_variations():
+    """Generate subject line variations using DeepSeek Flash (lighter task)."""
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    try:
+        brief = EmailBrief(
+            campaign_name=data.get("campaign_name", ""),
+            audience=data.get("audience", ""),
+            goal=data.get("goal", ""),
+            key_message=data.get("key_message", ""),
+            cta_text=data.get("cta_text", ""),
+            cta_url=data.get("cta_url", ""),
+            tone=data.get("tone", "educational"),
+            template_type=data.get("template_type", "educational"),
+            additional_context=data.get("additional_context", ""),
+            event_date=data.get("event_date"),
+        )
+    except Exception as e:
+        return jsonify({"error": f"Invalid brief: {str(e)}"}), 400
+
+    if not DEEPSEEK_API_KEY:
+        return jsonify({"error": "Subject variations require a DeepSeek API key"}), 400
+
+    try:
+        variations = generate_subject_variations(brief)
+        return jsonify({"status": "ok", "variations": variations, "model": "deepseek-v4-flash"})
+    except Exception as e:
+        return jsonify({"status": "failed", "errors": [str(e)]})
+
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)

@@ -1,0 +1,243 @@
+/**
+ * Email Production Agent — Frontend
+ * Handles brief form submission, sample loading, and result display.
+ */
+
+const form = document.getElementById('brief-form');
+const sampleSelect = document.getElementById('sample-select');
+const generateBtn = document.getElementById('generate-btn');
+const validationErrors = document.getElementById('validation-errors');
+const emptyState = document.getElementById('empty-state');
+const loadingState = document.getElementById('loading-state');
+const resultsContent = document.getElementById('results-content');
+const resultMeta = document.getElementById('result-meta');
+const modeNote = document.getElementById('mode-note');
+
+// Sample briefs injected from server
+let samples = {};
+
+// Load samples on page load
+fetch('/api/samples')
+  .then(r => r.json())
+  .then(data => { samples = data; })
+  .catch(() => {});
+
+// Sample picker
+sampleSelect.addEventListener('change', () => {
+  const key = sampleSelect.value;
+  if (!key || !samples[key]) return;
+  const s = samples[key];
+  document.getElementById('campaign_name').value = s.campaign_name || '';
+  document.getElementById('audience').value = s.audience || '';
+  document.getElementById('goal').value = s.goal || '';
+  document.getElementById('key_message').value = s.key_message || '';
+  document.getElementById('cta_text').value = s.cta_text || '';
+  document.getElementById('cta_url').value = s.cta_url || '';
+  document.getElementById('tone').value = s.tone || 'product_launch';
+  document.getElementById('template_type').value = s.template_type || 'product_launch';
+  document.getElementById('event_date').value = s.event_date || '';
+  document.getElementById('additional_context').value = s.additional_context || '';
+});
+
+// Form submit
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearErrors();
+  showLoading();
+
+  const data = {
+    campaign_name: document.getElementById('campaign_name').value.trim(),
+    audience: document.getElementById('audience').value.trim(),
+    goal: document.getElementById('goal').value.trim(),
+    key_message: document.getElementById('key_message').value.trim(),
+    cta_text: document.getElementById('cta_text').value.trim(),
+    cta_url: document.getElementById('cta_url').value.trim(),
+    tone: document.getElementById('tone').value,
+    template_type: document.getElementById('template_type').value,
+    additional_context: document.getElementById('additional_context').value.trim(),
+    event_date: document.getElementById('event_date').value.trim() || null,
+  };
+
+  // Animate steps
+  const steps = {
+    validate: document.getElementById('step-validate'),
+    generate: document.getElementById('step-generate'),
+    brand: document.getElementById('step-brand'),
+    preview: document.getElementById('step-preview'),
+  };
+
+  // Simulate step progress
+  setTimeout(() => markStep(steps.validate, 'active'), 100);
+  setTimeout(() => markStep(steps.validate, 'done'), 400);
+  setTimeout(() => markStep(steps.generate, 'active'), 500);
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+
+    const result = await resp.json();
+
+    if (result.status === 'failed') {
+      markStep(steps.generate, 'done');
+      markStep(steps.brand, 'done');
+      markStep(steps.preview, 'done');
+      showErrors(result.errors);
+      hideLoading();
+      return;
+    }
+
+    // Complete remaining steps
+    markStep(steps.generate, 'done');
+    setTimeout(() => { markStep(steps.brand, 'active'); }, 200);
+    setTimeout(() => { markStep(steps.brand, 'done'); }, 600);
+    setTimeout(() => { markStep(steps.preview, 'active'); }, 700);
+    setTimeout(() => { markStep(steps.preview, 'done'); }, 1000);
+    setTimeout(() => showResults(result), 1200);
+
+  } catch (err) {
+    showErrors([`Network error: ${err.message}`]);
+    hideLoading();
+  }
+});
+
+function markStep(el, state) {
+  if (!el) return;
+  el.className = state;
+  if (state === 'active') el.textContent = '◉ ' + el.textContent.replace(/^[○◉✓]\s*/, '');
+  if (state === 'done') el.textContent = '✓ ' + el.textContent.replace(/^[○◉✓]\s*/, '');
+}
+
+function showLoading() {
+  emptyState.classList.add('hidden');
+  resultsContent.classList.add('hidden');
+  resultMeta.classList.add('hidden');
+  loadingState.classList.remove('hidden');
+  generateBtn.disabled = true;
+  generateBtn.textContent = 'Generating...';
+}
+
+function hideLoading() {
+  loadingState.classList.add('hidden');
+  generateBtn.disabled = false;
+  generateBtn.textContent = '⚡ Generate Email';
+}
+
+function showErrors(errors) {
+  validationErrors.classList.remove('hidden');
+  validationErrors.innerHTML = '<h4>Brief Validation Failed</h4><ul>' +
+    errors.map(e => `<li>${escapeHtml(e)}</li>`).join('') +
+    '</ul>';
+}
+
+function clearErrors() {
+  validationErrors.classList.add('hidden');
+  validationErrors.innerHTML = '';
+}
+
+function showResults(result) {
+  hideLoading();
+  emptyState.classList.add('hidden');
+  resultsContent.classList.remove('hidden');
+  resultMeta.classList.remove('hidden');
+
+  // Subject + Preview
+  document.getElementById('result-subject').textContent = result.subject_line;
+  document.getElementById('result-preview').textContent = result.preview_text;
+
+  // Brand status
+  const brandStatus = document.getElementById('brand-status');
+  if (result.brand_passed) {
+    brandStatus.innerHTML = '<span class="brand-passed">✓ Passed</span>';
+  } else {
+    brandStatus.innerHTML = '<span class="brand-failed">✗ Critical Violations</span>';
+  }
+
+  // Violations
+  const violationsDiv = document.getElementById('brand-violations');
+  if (result.brand_violations && result.brand_violations.length > 0) {
+    violationsDiv.innerHTML = '<div class="brand-violations-list">' +
+      result.brand_violations.map(v => `
+        <div class="violation-item">
+          <span class="violation-severity severity-${v.severity}">${v.severity}</span>
+          <div>
+            <strong>[${v.location}]</strong> ${v.rule}
+            <div style="color:#666;font-size:12px;">${v.detail}</div>
+          </div>
+        </div>
+      `).join('') +
+      '</div>';
+  } else {
+    violationsDiv.innerHTML = '<p style="font-size:13px;color:var(--green);margin-top:4px;">No violations or warnings.</p>';
+  }
+
+  // Confidence
+  const confDiv = document.getElementById('confidence-display');
+  const score = result.confidence_score;
+  confDiv.innerHTML = `
+    <div class="confidence-bar">
+      <span class="confidence-number confidence-${score}">${score}</span>
+      <span style="font-size:14px;color:var(--dark-gray);">/ 5</span>
+      <div class="confidence-dots">
+        ${[1,2,3,4,5].map(n => `<div class="confidence-dot${n <= score ? ' filled' : ''}"></div>`).join('')}
+      </div>
+    </div>
+  `;
+
+  // Email iframe
+  document.getElementById('email-iframe').srcdoc = result.html_body;
+  document.getElementById('email-html-code').textContent = result.html_body;
+  document.getElementById('email-plain-code').textContent = result.plain_text;
+
+  // Meta
+  const provider = result.provider || 'demo';
+  resultMeta.innerHTML = `
+    <span class="meta-badge meta-template">${result.template_used || 'custom'}</span>
+    <span class="meta-badge meta-mode">${provider}</span>
+    <span>Confidence: ${score}/5</span>
+  `;
+
+  // Mode note
+  if (provider === 'DeepSeek') {
+    modeNote.textContent = 'Live mode — using DeepSeek API for real generation.';
+  } else if (provider === 'Claude') {
+    modeNote.textContent = 'Live mode — using Claude API for real generation.';
+  } else {
+    modeNote.textContent = 'Demo mode — no API key configured. Realistic simulated output.';
+  }
+
+  // Sync status
+  if (result.sync) {
+    const syncDiv = document.getElementById('sync-status');
+    if (result.sync.success) {
+      syncDiv.innerHTML = result.sync.preview_url
+        ? `<span class="brand-passed">✓ Synced to Customer.io</span> <a href="${result.sync.preview_url}" target="_blank" style="font-size:13px;color:var(--purple);">Open in Design Studio →</a>`
+        : `<span class="brand-passed">✓ ${result.sync.detail}</span>`;
+    } else {
+      syncDiv.innerHTML = `<span class="brand-failed">✗ Sync failed: ${result.sync.detail}</span>`;
+    }
+    syncDiv.classList.remove('hidden');
+  }
+  if (window.innerWidth < 960) {
+    document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth' });
+  }
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const tabName = tab.dataset.tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+    document.getElementById('tab-' + tabName).classList.remove('hidden');
+  });
+});
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Production Agent — Figma Marketing Engineering</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <span class="logo">⚡ Email Production Agent</span>
+    <span class="badge">POC — Figma Marketing Engineering</span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- LEFT: Brief Input -->
+  <section class="panel brief-panel">
+    <div class="panel-header">
+      <h2>📋 Email Brief</h2>
+      <div class="sample-picker">
+        <label for="sample-select">Quick load:</label>
+        <select id="sample-select">
+          <option value="">— Custom brief —</option>
+          <option value="product_launch">🚀 Product Launch</option>
+          <option value="event">🎟 Event Invite</option>
+          <option value="feature_update">🔧 Feature Update</option>
+          <option value="educational">📚 Educational</option>
+        </select>
+      </div>
+    </div>
+
+    <form id="brief-form">
+      <div class="field">
+        <label for="campaign_name">Campaign Name <span class="required">*</span></label>
+        <input type="text" id="campaign_name" placeholder="e.g. Figma AI Launch" required>
+      </div>
+
+      <div class="field">
+        <label for="audience">Audience <span class="required">*</span></label>
+        <input type="text" id="audience" placeholder="e.g. Design leads at 50+ employee companies" required>
+      </div>
+
+      <div class="field">
+        <label for="goal">Goal <span class="required">*</span></label>
+        <textarea id="goal" rows="2" placeholder="What does success look like? e.g. 500 AI feature activations in week 1" required></textarea>
+      </div>
+
+      <div class="field">
+        <label for="key_message">Key Message <span class="required">*</span></label>
+        <textarea id="key_message" rows="2" placeholder="The one thing they need to know" required></textarea>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="cta_text">CTA Text <span class="required">*</span></label>
+          <input type="text" id="cta_text" placeholder="2-4 words" required>
+        </div>
+        <div class="field">
+          <label for="cta_url">CTA URL <span class="required">*</span></label>
+          <input type="url" id="cta_url" placeholder="https://figma.com/..." required>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="tone">Tone</label>
+          <select id="tone">
+            <option value="product_launch">Product Launch</option>
+            <option value="event">Event</option>
+            <option value="feature_update">Feature Update</option>
+            <option value="educational">Educational</option>
+            <option value="reengagement">Re-engagement</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="template_type">Template</label>
+          <select id="template_type">
+            <option value="product_launch">Product Launch</option>
+            <option value="event_invite">Event Invite</option>
+            <option value="feature_update">Feature Update</option>
+            <option value="educational">Educational / Newsletter</option>
+            <option value="reengagement">Re-engagement</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="event_date">Event Date <span class="hint">(event invites only)</span></label>
+        <input type="text" id="event_date" placeholder="e.g. June 10-11, 2026">
+      </div>
+
+      <div class="field">
+        <label for="additional_context">Additional Context</label>
+        <textarea id="additional_context" rows="2" placeholder="Anything else the generator should know..."></textarea>
+      </div>
+
+      <button type="submit" class="btn-generate" id="generate-btn">
+        ⚡ Generate Email
+      </button>
+      <p class="mode-note" id="mode-note">Demo mode — no API key configured. Realistic simulated output.</p>
+    </form>
+
+    <!-- Validation Errors -->
+    <div id="validation-errors" class="errors hidden"></div>
+  </section>
+
+  <!-- RIGHT: Results -->
+  <section class="panel results-panel" id="results-panel">
+    <div class="panel-header">
+      <h2>📧 Generated Email</h2>
+      <div id="result-meta" class="result-meta hidden"></div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state">
+      <div class="empty-icon">📧</div>
+      <h3>No email generated yet</h3>
+      <p>Fill in a brief on the left — or load a sample — and hit Generate.</p>
+      <p class="empty-hint">The agent will produce a complete email with brand compliance checking and a human review gate.</p>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading-state" class="loading-state hidden">
+      <div class="spinner"></div>
+      <p>Generating email...</p>
+      <p class="loading-steps">
+        <span id="step-validate">○ Validating brief</span>
+        <span id="step-generate">○ Generating email</span>
+        <span id="step-brand">○ Running brand check</span>
+        <span id="step-preview">○ Rendering preview</span>
+      </p>
+    </div>
+
+    <!-- Results -->
+    <div id="results-content" class="results-content hidden">
+      <!-- Subject + Preview -->
+      <div class="result-card subject-card">
+        <div class="result-label">Subject Line</div>
+        <div class="result-value" id="result-subject"></div>
+        <div class="result-label" style="margin-top:12px;">Preview Text</div>
+        <div class="result-value preview-value" id="result-preview"></div>
+      </div>
+
+      <!-- Brand Report -->
+      <div class="result-card brand-card">
+        <div class="result-label">Brand Compliance</div>
+        <div id="brand-status"></div>
+        <div id="brand-violations"></div>
+      </div>
+
+      <!-- Confidence -->
+      <div class="result-card confidence-card">
+        <div class="result-label">Confidence Score</div>
+        <div id="confidence-display"></div>
+      </div>
+
+      <!-- Email Preview iframe -->
+      <div class="result-card preview-card">
+        <div class="result-label">Email Preview</div>
+        <div class="preview-tabs">
+          <button class="tab active" data-tab="rendered">Rendered</button>
+          <button class="tab" data-tab="html">HTML</button>
+          <button class="tab" data-tab="plain">Plain Text</button>
+        </div>
+        <div class="tab-content" id="tab-rendered">
+          <iframe id="email-iframe" sandbox="allow-same-origin"></iframe>
+        </div>
+        <div class="tab-content hidden" id="tab-html">
+          <pre id="email-html-code" class="code-block"></pre>
+        </div>
+        <div class="tab-content hidden" id="tab-plain">
+          <pre id="email-plain-code" class="code-block"></pre>
+        </div>
+      </div>
+
+      <!-- Human Review Gate -->
+      <div class="review-gate">
+        <div class="review-gate-icon">👤</div>
+        <div class="review-gate-text">
+          <strong>Human Review Required</strong>
+          <p>This email has NOT been sent. In production, the email team reviews and approves here before syncing to Customer.io.</p>
+        </div>
+      </div>
+
+      <!-- Sync Status -->
+      <div id="sync-status" class="result-card hidden" style="margin-top:0;"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
