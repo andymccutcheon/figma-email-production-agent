@@ -11,7 +11,6 @@ const validationErrors = document.getElementById('validation-errors');
 const emptyState = document.getElementById('empty-state');
 const loadingState = document.getElementById('loading-state');
 const resultsContent = document.getElementById('results-content');
-const resultMeta = document.getElementById('result-meta');
 const modeNote = document.getElementById('mode-note');
 const freeformInput = document.getElementById('freeform-input');
 const freeformTextarea = document.getElementById('freeform_text');
@@ -217,7 +216,6 @@ function markStep(el, state) {
 function showLoading() {
   emptyState.classList.add('hidden');
   resultsContent.classList.add('hidden');
-  resultMeta.classList.add('hidden');
   loadingState.classList.remove('hidden');
   generateBtn.disabled = true;
   generateBtn.innerHTML = 'Generating\u2026';
@@ -245,19 +243,27 @@ function showResults(result) {
   hideLoading();
   emptyState.classList.add('hidden');
   resultsContent.classList.remove('hidden');
-  resultMeta.classList.remove('hidden');
 
-  // Subject + Preview
+  // Metadata bar
   document.getElementById('result-subject').textContent = result.subject_line;
   document.getElementById('result-preview').textContent = result.preview_text;
+  document.getElementById('result-template-tag').textContent = result.template_used || 'custom';
 
-  // Brand status
+  // Brand chip
   const brandStatus = document.getElementById('brand-status');
   if (result.brand_passed) {
-    brandStatus.innerHTML = '<span class="brand-passed">\u2713 Passed</span>';
+    brandStatus.textContent = '\u2713 Passed';
+    brandStatus.className = 'meta-chip meta-brand passed';
   } else {
-    brandStatus.innerHTML = '<span class="brand-failed">\u2717 Critical Violations</span>';
+    brandStatus.textContent = '\u2717 Issues';
+    brandStatus.className = 'meta-chip meta-brand failed';
   }
+
+  // Confidence chip
+  const confChip = document.getElementById('confidence-display');
+  const score = result.confidence_score;
+  confChip.textContent = score + '/5';
+  confChip.className = 'meta-chip meta-confidence conf-' + score;
 
   // Violations
   const violationsDiv = document.getElementById('brand-violations');
@@ -268,41 +274,21 @@ function showResults(result) {
           <span class="violation-severity severity-${v.severity}">${v.severity}</span>
           <div>
             <strong>[${v.location}]</strong> ${v.rule}
-            <div style="color:#666;font-size:12px;">${v.detail}</div>
+            <div style="color:#666;font-size:11px;">${v.detail}</div>
           </div>
         </div>
       `).join('') +
       '</div>';
+    violationsDiv.classList.remove('hidden');
   } else {
-    violationsDiv.innerHTML = '<p style="font-size:13px;color:var(--green);margin-top:4px;">No violations or warnings.</p>';
+    violationsDiv.classList.add('hidden');
   }
-
-  // Confidence
-  const confDiv = document.getElementById('confidence-display');
-  const score = result.confidence_score;
-  confDiv.innerHTML = `
-    <div class="confidence-bar">
-      <span class="confidence-number confidence-${score}">${score}</span>
-      <span style="font-size:14px;color:var(--dark-gray);">/ 5</span>
-      <div class="confidence-dots">
-        ${[1,2,3,4,5].map(n => `<div class="confidence-dot${n <= score ? ' filled' : ''}"></div>`).join('')}
-      </div>
-    </div>
-  `;
 
   // Email iframes
   document.getElementById('email-iframe-desktop').srcdoc = result.html_body;
   document.getElementById('email-iframe-mobile').srcdoc = result.html_body;
   document.getElementById('email-html-code').textContent = result.html_body;
   document.getElementById('email-plain-code').textContent = result.plain_text;
-
-  // Meta
-  const provider = result.provider || 'demo';
-  resultMeta.innerHTML = `
-    <span class="meta-badge meta-template">${result.template_used || 'custom'}</span>
-    <span class="meta-badge meta-mode">${provider}</span>
-    <span>Confidence: ${score}/5</span>
-  `;
 
   // Mode note
   if (provider === 'DeepSeek') {
