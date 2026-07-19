@@ -24,6 +24,10 @@ from preview import render_preview
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=True,
+)
 
 ACCESS_PASSWORD = "nicolascage"
 
