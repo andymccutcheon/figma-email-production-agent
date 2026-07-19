@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Email Production Agent — Figma Marketing Engineering</title>
+<link rel="icon" type="image/png" href="/static/favicon.png">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+
+<main class="login-cover">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg width="32" height="48" viewBox="0 0 32 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#00B6FF" d="M16 23.059A7.06 7.06 0 0 1 23.06 16H24a8 8 0 1 1 0 16h-.941A7.06 7.06 0 0 1 16 24.941z"/>
+        <path fill="#24CB71" d="M0 40a8 8 0 0 1 8-8h8v8a8 8 0 1 1-16 0"/>
+        <path fill="#FF7237" d="M16 0v16h8a8 8 0 1 0 0-16z"/>
+        <path fill="#FF3737" d="M0 8a8 8 0 0 0 8 8h8V0H8a8 8 0 0 0-8 8"/>
+        <path fill="#874FFF" d="M0 24a8 8 0 0 0 8 8h8V16H8a8 8 0 0 0-8 8"/>
+      </svg>
+    </div>
+
+    <h1 class="login-title">Email Production Agent</h1>
+    <p class="login-subtitle">Figma Marketing Engineering — Prototype</p>
+
+    <form method="POST" action="/login" class="login-form">
+      <div class="login-field">
+        <input
+          type="password"
+          name="password"
+          id="password"
+          placeholder="Enter password"
+          autofocus
+          autocomplete="off"
+          required
+        />
+        {% if error %}
+        <p class="login-error">{{ error }}</p>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="login-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Unlock
+      </button>
+    </form>
+  </div>
+
+  <p class="login-footer">Internal tool &middot; Authorized use only</p>
+</main>
+
+</body>
+</html>

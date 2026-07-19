@@ -14,13 +14,38 @@ load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file_
 # Ensure parent directory is on path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, render_template, request, jsonify
+import secrets
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from intake import EmailBrief
 from generate import generate_email, GeneratedEmail, get_active_provider, generate_subject_variations, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_FLASH_MODEL
 from brand_check import BrandChecker, BrandCheckReport
 from preview import render_preview
 
 app = Flask(__name__)
+app.secret_key = secrets.token_hex(32)
+
+ACCESS_PASSWORD = "nicolascage"
+
+
+def require_auth(f):
+    """Decorator that redirects to login if not authenticated (for page routes)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("authenticated"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def require_auth_api(f):
+    """Decorator that returns 401 JSON if not authenticated (for API routes)."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("authenticated"):
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated
 
 SAMPLE_BRIEFS = {
     "product_launch": {
@@ -128,13 +153,32 @@ If the text mentions a specific Figma feature, product, or event, use your knowl
     return _json.loads(response_text)
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Cover page with password gate."""
+    error = None
+    if request.method == "POST":
+        if request.form.get("password") == ACCESS_PASSWORD:
+            session["authenticated"] = True
+            return redirect(url_for("index"))
+        error = "Incorrect password"
+
+    # If already authenticated, skip to app
+    if session.get("authenticated"):
+        return redirect(url_for("index"))
+
+    return render_template("login.html", error=error)
+
+
 @app.route("/")
+@require_auth
 def index():
     """Main page: brief form + results area."""
     return render_template("index.html", samples=SAMPLE_BRIEFS)
 
 
 @app.route("/api/generate", methods=["POST"])
+@require_auth_api
 def api_generate():
     """Generate an email from a brief (structured or freeform). Returns JSON with the full result."""
     data = request.get_json()
@@ -245,12 +289,14 @@ def api_generate():
 
 
 @app.route("/api/samples", methods=["GET"])
+@require_auth_api
 def api_samples():
     """Return sample briefs for the demo."""
     return jsonify(SAMPLE_BRIEFS)
 
 
 @app.route("/api/subject-variations", methods=["POST"])
+@require_auth_api
 def api_subject_variations():
     """Generate subject line variations using DeepSeek Flash (lighter task)."""
     data = request.get_json()
