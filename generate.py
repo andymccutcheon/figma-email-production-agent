@@ -44,6 +44,12 @@ def compile_mjml(mjml: str) -> str:
     Uses --config.minify=true to stay under Gmail's 102KB clip limit
     and --config.validationLevel=soft to handle minor LLM output quirks.
     """
+    # Strip any markdown code fences the LLM may have wrapped the MJML in
+    mjml = mjml.strip()
+    mjml = re.sub(r'^```(?:mjml|xml|html)?\s*\n?', '', mjml)
+    mjml = re.sub(r'\n?```\s*$', '', mjml)
+    mjml = mjml.strip()
+
     with tempfile.NamedTemporaryFile(mode='w', suffix='.mjml', delete=False, encoding='utf-8') as f:
         f.write(mjml)
         mjml_path = f.name
@@ -209,7 +215,12 @@ def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
     data = _extract_json(response_text)
 
     # The LLM outputs MJML in html_body — compile it to real HTML
+    # Strip markdown fences before checking
     mjml_source = data.get("html_body", data.get("mjml_body", ""))
+    if mjml_source:
+        mjml_source = mjml_source.strip()
+        mjml_source = re.sub(r'^```(?:mjml|xml|html)?\s*\n?', '', mjml_source)
+        mjml_source = re.sub(r'\n?```\s*$', '', mjml_source)
     if mjml_source and "<mjml" in mjml_source:
         data["html_body"] = compile_mjml(mjml_source)
 
@@ -285,6 +296,10 @@ def _generate_with_claude(brief: EmailBrief, api_key: str) -> GeneratedEmail:
 
     # Compile MJML to HTML if present
     mjml_source = data.get("html_body", data.get("mjml_body", ""))
+    if mjml_source:
+        mjml_source = mjml_source.strip()
+        mjml_source = re.sub(r'^```(?:mjml|xml|html)?\s*\n?', '', mjml_source)
+        mjml_source = re.sub(r'\n?```\s*$', '', mjml_source)
     if mjml_source and "<mjml" in mjml_source:
         data["html_body"] = compile_mjml(mjml_source)
 
