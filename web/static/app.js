@@ -287,8 +287,9 @@ function showResults(result) {
     </div>
   `;
 
-  // Email iframe
-  document.getElementById('email-iframe').srcdoc = result.html_body;
+  // Email iframes
+  document.getElementById('email-iframe-desktop').srcdoc = result.html_body;
+  document.getElementById('email-iframe-mobile').srcdoc = result.html_body;
   document.getElementById('email-html-code').textContent = result.html_body;
   document.getElementById('email-plain-code').textContent = result.plain_text;
 
