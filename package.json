@@ -1,0 +1,12 @@
+{
+  "name": "figma-email-production-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LLM-powered email production pipeline for Figma marketing emails",
+  "scripts": {
+    "compile": "npx mjml --config.minify=true --config.validationLevel=soft"
+  },
+  "devDependencies": {
+    "mjml": "^4.15.0"
+  }
+}

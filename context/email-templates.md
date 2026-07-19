@@ -1,39 +1,61 @@
-# Email Templates (Synthetic)
+# Email Templates (MJML)
 
-> Template structures for common Figma email types. The LLM selects and populates based on the brief.
+> Template structures for common Figma email types. All templates are built in MJML.
+> The LLM selects and populates based on the brief, outputting valid MJML XML.
+
+## Required Elements (every template)
+
+All MJML documents must include:
+1. `<mjml lang="en">` root
+2. `<mj-head>` with `<mj-title>`, `<mj-attributes>`, and `<mj-style>`
+3. Logo: `<mj-image src="LOGO_URL" alt="Figma" width="40px" align="center" />`
+4. View-in-browser link in first `<mj-section>`
+5. Footer `<mj-section>` with unsubscribe, preferences, and physical address
+6. All images have `alt` attribute
+
+The logo URL is: `https://userimg-assets.customeriomail.com/images/client-env-226115/01KXY0PTW2FWKDYZ4377K8BM3G.png`
 
 ## Template: Product Launch
-- Hero image (600px, product screenshot or illustration)
-- Headline: What's new
-- 2-3 feature highlights with icons
-- Primary CTA: "Try it now" / "See what's new"
-- Social proof: customer quote or stat
-- Footer: standard
+Structure:
+- Hero section with campaign name (28px bold) and key message
+- `<mj-button>` CTA with brief.cta_text
+- Feature highlights section (background-color="#F5F5F5")
+  - 3 features, each with bold title + description text
+- Standard footer
 
 ## Template: Event Invite
-- Event name + date (hero)
-- 3 reasons to attend (bullet list)
-- Speaker highlight (if applicable)
-- Primary CTA: "Save your spot" / "Register free"
-- Calendar link
-- Footer: standard
-
-## Template: Educational / Newsletter
-- Header: edition name + date
-- 1 feature article (headline + 2-3 sentence summary + read more)
-- 2-3 quick hits (one-liners with links)
-- Community highlight or tip
-- Footer: standard
+Structure:
+- Hero section with background-color="#0D99FF"
+  - "You're invited" label (uppercase, 14px, white at 80% opacity)
+  - Event name (28px bold, white)
+  - Event date (18px, white at 90% opacity)
+- "Why attend" section with bullet points
+- `<mj-button>` CTA
+- Standard footer
 
 ## Template: Feature Update
-- Feature name (hero)
-- Before/after or screenshot
-- 2-3 bullet points: what changed and why it matters
-- Primary CTA: "Try it" / "Learn more"
-- Footer: standard
+Structure:
+- "New in Figma" label (uppercase, 14px, #0D99FF)
+- Feature name (28px bold)
+- Key message description
+- "What changed" section (background-color="#F5F5F5")
+  - 2 feature bullets with title + description
+- `<mj-button>` CTA
+- Standard footer
+
+## Template: Educational / Newsletter
+Structure:
+- Campaign name (28px bold)
+- Key message description
+- "What we're thinking about" section (background-color="#F5F5F5")
+  - 1-2 paragraphs of educational content
+  - Optional: community highlight or tip
+- `<mj-button>` CTA
+- Standard footer
 
 ## Template: Re-engagement
-- Warm headline: "We miss you" / "Your projects are waiting"
-- What's new since they left (2-3 bullets)
-- Primary CTA: "Jump back in"
-- Footer: standard
+Structure:
+- Warm headline: "A lot's happened" / "We'd love to have you back"
+- What's new section with 2-3 feature bullets
+- `<mj-button>` CTA: "Open Figma" or similar
+- Standard footer

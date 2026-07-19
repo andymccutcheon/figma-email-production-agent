@@ -1,7 +1,12 @@
 """
-Email Generator — LLM-powered email creation.
+Email Generator — LLM-powered email creation using MJML templates.
 
-Uses the prompt from prompts/email-generation.md and context files.
+MJML is compiled to production-ready HTML with cross-client compatibility
+(Outlook, Gmail, Apple Mail, mobile). The pipeline is:
+  1. LLM (or demo fallback) produces MJML XML
+  2. compile_mjml() converts to HTML via npx mjml
+  3. Brand checker and preview consume the compiled HTML
+
 Primary provider: DeepSeek (OpenAI-compatible API).
 Falls back to demo/simulated generation when no API key is available.
 """
@@ -9,6 +14,8 @@ Falls back to demo/simulated generation when no API key is available.
 import json
 import os
 import re
+import subprocess
+import tempfile
 from dataclasses import dataclass, asdict
 from typing import Optional
 
@@ -29,11 +36,65 @@ DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 
+# ── MJML Compilation ───────────────────────────────────────
+
+def compile_mjml(mjml: str) -> str:
+    """Compile MJML XML to production-ready HTML via npx mjml.
+
+    Uses --config.minify=true to stay under Gmail's 102KB clip limit
+    and --config.validationLevel=soft to handle minor LLM output quirks.
+    """
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.mjml', delete=False, encoding='utf-8') as f:
+        f.write(mjml)
+        mjml_path = f.name
+
+    try:
+        result = subprocess.run(
+            [
+                "npx", "mjml", mjml_path,
+                "--config.minify=true",
+                "--config.validationLevel=soft",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=os.path.dirname(__file__),
+        )
+
+        if result.returncode != 0:
+            # If MJML compilation fails, return the raw MJML as a fallback
+            err = result.stderr[:500]
+            print(f"[MJML] Compilation warning (using raw output): {err}")
+            # Try to extract any HTML from the output anyway
+            if result.stdout.strip():
+                return result.stdout
+            raise RuntimeError(f"MJML compilation failed: {err}")
+
+        return result.stdout
+
+    except FileNotFoundError:
+        print("[MJML] npx not found — MJML compilation skipped, returning raw MJML")
+        return mjml
+    except subprocess.TimeoutExpired:
+        print("[MJML] Compilation timed out — returning raw MJML")
+        return mjml
+    finally:
+        try:
+            os.unlink(mjml_path)
+        except OSError:
+            pass
+
+
+# ── Logo URL ───────────────────────────────────────────────
+
+LOGO_URL = "https://userimg-assets.customeriomail.com/images/client-env-226115/01KXY0PTW2FWKDYZ4377K8BM3G.png"
+
+
 @dataclass
 class GeneratedEmail:
     subject_line: str
     preview_text: str
-    html_body: str
+    html_body: str       # Compiled HTML (from MJML)
     plain_text: str
     template_used: str
     confidence_score: int  # 1-5
@@ -42,8 +103,9 @@ class GeneratedEmail:
         return asdict(self)
 
 
+# ── Prompt Loading ─────────────────────────────────────────
+
 def load_prompt(name: str) -> str:
-    """Load a prompt file from the prompts/ directory."""
     prompt_dir = os.path.join(os.path.dirname(__file__), "prompts")
     path = os.path.join(prompt_dir, f"{name}.md")
     with open(path) as f:
@@ -51,7 +113,6 @@ def load_prompt(name: str) -> str:
 
 
 def load_context(name: str) -> str:
-    """Load a context file from the context/ directory."""
     ctx_dir = os.path.join(os.path.dirname(__file__), "context")
     path = os.path.join(ctx_dir, f"{name}.md")
     with open(path) as f:
@@ -59,7 +120,7 @@ def load_context(name: str) -> str:
 
 
 def build_system_prompt(brief: EmailBrief) -> str:
-    """Build the full system prompt by combining the email-generation prompt with context files."""
+    """Build the full system prompt for MJML email generation."""
     prompt = load_prompt("email-generation")
     brand = load_context("brand-guidelines")
     voice = load_context("voice-and-tone")
@@ -95,8 +156,10 @@ Template: {brief.template_type}
 Additional Context: {brief.additional_context or 'None'}
 {"Event Date: " + brief.event_date if brief.event_date else ""}
 
-Generate the email now. Return ONLY valid JSON -- no other text."""
+Generate the email now. Return ONLY valid JSON — no other text."""
 
+
+# ── DeepSeek API ───────────────────────────────────────────
 
 def _call_deepseek(system_prompt: str, user_message: str, model: str, max_tokens: int = 4096) -> str:
     """Call the DeepSeek API with the given model and return the response text."""
@@ -136,7 +199,7 @@ def _extract_json(text: str) -> dict:
 
 
 def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
-    """Generate a full email using DeepSeek Pro (complex task)."""
+    """Generate a full email using DeepSeek Pro. LLM outputs MJML, we compile to HTML."""
     system_prompt = build_system_prompt(brief)
     response_text = _call_deepseek(
         system_prompt=system_prompt,
@@ -144,14 +207,17 @@ def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
         model=DEEPSEEK_PRO_MODEL,
     )
     data = _extract_json(response_text)
+
+    # The LLM outputs MJML in html_body — compile it to real HTML
+    mjml_source = data.get("html_body", data.get("mjml_body", ""))
+    if mjml_source and "<mjml" in mjml_source:
+        data["html_body"] = compile_mjml(mjml_source)
+
     return GeneratedEmail(**{k: data[k] for k in GeneratedEmail.__dataclass_fields__ if k in data})
 
 
 def generate_subject_variations(brief: EmailBrief, count: int = 3) -> list[dict]:
-    """
-    Generate subject line variations using DeepSeek Flash (lighter task).
-    Falls back to Pro if Flash key isn't configured separately.
-    """
+    """Generate subject line variations using DeepSeek Flash (lighter task)."""
     subject_prompt = load_prompt("subject-line")
     voice = load_context("voice-and-tone")
 
@@ -172,28 +238,20 @@ Generate {count} subject line variations. Return only valid JSON."""
     response_text = _call_deepseek(
         system_prompt=system_prompt,
         user_message=user_message,
-        model=DEEPSEEK_FLASH_MODEL,  # Flash for lighter tasks
+        model=DEEPSEEK_FLASH_MODEL,
         max_tokens=1024,
     )
     return _extract_json(response_text)
 
 
+# ── Routing ────────────────────────────────────────────────
+
 def generate_email(brief: EmailBrief, api_key: Optional[str] = None) -> GeneratedEmail:
-    """
-    Generate an email from a brief.
-
-    Routing:
-    - DeepSeek Pro (deepseek-v4-pro) → full email generation (complex)
-    - DeepSeek Flash (deepseek-v4-flash) → subject line variations (lighter)
-
-    Falls back to Claude or demo mode if no DeepSeek key.
-    """
+    """Generate an email from a brief. Routes to DeepSeek, Claude, or demo."""
     if DEEPSEEK_API_KEY:
         return _generate_with_deepseek(brief)
-
     if api_key:
         return _generate_with_claude(brief, api_key)
-
     return _generate_demo(brief)
 
 
@@ -211,7 +269,6 @@ def _generate_with_claude(brief: EmailBrief, api_key: str) -> GeneratedEmail:
         messages=[{"role": "user", "content": "Generate the email based on the brief and system instructions. Return only valid JSON."}]
     )
 
-    # Extract text from response — handle both TextBlock and ThinkingBlock
     response_text = ""
     for block in message.content:
         if hasattr(block, 'text') and block.type != 'thinking':
@@ -220,12 +277,17 @@ def _generate_with_claude(brief: EmailBrief, api_key: str) -> GeneratedEmail:
     if not response_text:
         raise ValueError("No text content in LLM response")
 
-    # Extract JSON from response (handle markdown code blocks)
     json_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', response_text, re.DOTALL)
     if json_match:
         response_text = json_match.group(1)
 
     data = json.loads(response_text)
+
+    # Compile MJML to HTML if present
+    mjml_source = data.get("html_body", data.get("mjml_body", ""))
+    if mjml_source and "<mjml" in mjml_source:
+        data["html_body"] = compile_mjml(mjml_source)
+
     return GeneratedEmail(**{k: data[k] for k in GeneratedEmail.__dataclass_fields__ if k in data})
 
 
@@ -238,69 +300,12 @@ def get_active_provider() -> str:
     return "demo"
 
 
-# ── Demo mode (below) — unchanged ──────────────────────────
-
+# ── Demo Mode (MJML-based) ─────────────────────────────────
 
 def _generate_demo(brief: EmailBrief) -> GeneratedEmail:
-    """
-    Generate a simulated email for demo purposes.
-    Produces a realistic, on-brand email that demonstrates the pipeline without API calls.
-    """
-    template_content = _get_template_content(brief)
-
-    html_body = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{brief.campaign_name}</title>
-</head>
-<body style="margin:0;padding:0;background-color:#F5F5F5;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5F5;">
-  <tr>
-    <td align="center" style="padding:20px 0;">
-      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:8px;overflow:hidden;">
-
-        <!-- View in browser -->
-        <tr>
-          <td style="padding:16px 24px 0;text-align:center;">
-            <a href="https://figma.com" style="color:#666666;font-size:12px;text-decoration:underline;">View in browser</a>
-          </td>
-        </tr>
-
-        <!-- Logo -->
-        <tr>
-          <td style="padding:24px;text-align:center;">
-            <a href="https://figma.com" style="text-decoration:none;">
-              <img src="https://userimg-assets.customeriomail.com/images/client-env-226115/01KXY0PTW2FWKDYZ4377K8BM3G.png" alt="Figma" width="40" height="40" style="display:block;margin:0 auto;">
-            </a>
-          </td>
-        </tr>
-
-        {template_content}
-
-        <!-- Footer -->
-        <tr>
-          <td style="padding:32px 24px;border-top:1px solid #F5F5F5;">
-            <p style="font-size:12px;color:#666666;line-height:1.6;text-align:center;margin:0 0 8px;">
-              You're receiving this because you're part of the Figma community.
-            </p>
-            <p style="font-size:12px;color:#666666;line-height:1.6;text-align:center;margin:0 0 8px;">
-              <a href="https://figma.com/unsubscribe" style="color:#666666;">Unsubscribe</a> |
-              <a href="https://figma.com/preferences" style="color:#666666;">Manage preferences</a>
-            </p>
-            <p style="font-size:12px;color:#666666;line-height:1.6;text-align:center;margin:0;">
-              Figma, Inc. 760 Market St, San Francisco, CA 94102
-            </p>
-          </td>
-        </tr>
-
-      </table>
-    </td>
-  </tr>
-</table>
-</body>
-</html>"""
+    """Generate a simulated email using MJML templates. No API calls."""
+    mjml = _build_demo_mjml(brief)
+    html_body = compile_mjml(mjml)
 
     subject_line = _generate_subject_line(brief)
     preview_text = _generate_preview_text(brief)
@@ -316,101 +321,220 @@ def _generate_demo(brief: EmailBrief) -> GeneratedEmail:
     )
 
 
-def _get_template_content(brief: EmailBrief) -> str:
-    """Generate template-specific HTML content based on the brief's template type."""
+def _build_demo_mjml(brief: EmailBrief) -> str:
+    """Build a complete MJML document for demo mode."""
+    template_content = _get_template_mjml(brief)
+
+    return f"""<mjml>
+  <mj-head>
+    <mj-title>{brief.campaign_name}</mj-title>
+    <mj-font name="Figma Standard Text" href="https://fonts.cdnfonts.com/css/helvetica-neue-9" />
+    <mj-attributes>
+      <mj-all font-family="'Helvetica Neue', Arial, sans-serif" />
+      <mj-text font-size="16px" color="#1E1E1E" line-height="1.6" />
+      <mj-button background-color="#0D99FF" color="#FFFFFF" font-weight="600" border-radius="8px" padding="14px 32px" font-size="16px" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .view-in-browser {{ color: #666666; font-size: 12px; }}
+      .footer-text {{ color: #666666; font-size: 12px; }}
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#F5F5F5">
+    <!-- View in browser -->
+    <mj-section padding="16px 24px 0">
+      <mj-column>
+        <mj-text align="center" font-size="12px" color="#666666">
+          <a href="https://figma.com" style="color:#666666;">View in browser</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Logo -->
+    <mj-section padding="24px">
+      <mj-column>
+        <mj-image src="{LOGO_URL}" alt="Figma" width="40px" align="center" />
+      </mj-column>
+    </mj-section>
+
+    {template_content}
+
+    <!-- Footer -->
+    <mj-section padding="32px 24px" border-top="1px solid #F5F5F5">
+      <mj-column>
+        <mj-text align="center" font-size="12px" color="#666666" line-height="1.6">
+          You're receiving this because you're part of the Figma community.
+        </mj-text>
+        <mj-text align="center" font-size="12px" color="#666666" line-height="1.6">
+          <a href="https://figma.com/unsubscribe" style="color:#666666;">Unsubscribe</a> |
+          <a href="https://figma.com/preferences" style="color:#666666;">Manage preferences</a>
+        </mj-text>
+        <mj-text align="center" font-size="12px" color="#666666" line-height="1.6">
+          Figma, Inc. 760 Market St, San Francisco, CA 94102
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>"""
+
+
+def _get_template_mjml(brief: EmailBrief) -> str:
+    """Return MJML content for the specific template type."""
     key_message = brief.key_message
 
     if brief.template_type == "product_launch":
         return f"""<!-- Hero -->
-        <tr>
-          <td style="padding:0 24px 24px;text-align:center;">
-            <h1 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">
-              {brief.campaign_name}
-            </h1>
-            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0 0 24px;max-width:480px;display:inline-block;">
-              {key_message}
-            </p>
-            <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">
-              {brief.cta_text}
-            </a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px;background-color:#F5F5F5;">
-            <h2 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">What's new</h2>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="padding:12px 0;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Built for speed</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">New rendering engine makes every interaction feel instant, even on complex files.</p></td></tr>
-              <tr><td style="padding:12px 0;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Collaborate in real time</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Multiplayer cursors now show what everyone's working on — no more stepping on toes.</p></td></tr>
-              <tr><td style="padding:12px 0;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Design systems that scale</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Variables and modes make it easy to build once and deploy everywhere.</p></td></tr>
-            </table>
-          </td>
-        </tr>"""
+    <mj-section padding="0 24px 24px">
+      <mj-column>
+        <mj-text align="center" font-size="28px" font-weight="700" color="#000000" padding="0 0 12px">
+          {brief.campaign_name}
+        </mj-text>
+        <mj-text align="center" font-size="16px" color="#666666" padding="0 0 24px" css-class="hero-description">
+          {key_message}
+        </mj-text>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Features -->
+    <mj-section padding="24px" background-color="#F5F5F5">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 0 16px">
+          What's new
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 0 4px">
+          Built for speed
+        </mj-text>
+        <mj-text font-size="14px" color="#666666" padding="0 0 16px">
+          New rendering engine makes every interaction feel instant, even on complex files.
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 0 4px">
+          Collaborate in real time
+        </mj-text>
+        <mj-text font-size="14px" color="#666666" padding="0 0 16px">
+          Multiplayer cursors now show what everyone's working on — no more stepping on toes.
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 0 4px">
+          Design systems that scale
+        </mj-text>
+        <mj-text font-size="14px" color="#666666" padding="0 0 8px">
+          Variables and modes make it easy to build once and deploy everywhere.
+        </mj-text>
+      </mj-column>
+    </mj-section>"""
 
     elif brief.template_type == "event_invite":
         event_date = brief.event_date or "Coming soon"
         return f"""<!-- Event Hero -->
-        <tr>
-          <td style="padding:24px;text-align:center;background-color:#0D99FF;">
-            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:rgba(255,255,255,0.8);margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">You're invited</p>
-            <h1 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#FFFFFF;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
-            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:18px;color:rgba(255,255,255,0.9);margin:0 0 8px;">{event_date}</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px;">
-            <h2 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">Why attend</h2>
-            <ul style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.8;margin:0 0 24px;padding:0 0 0 20px;">
-              <li style="margin-bottom:8px;">Learn how leading teams ship design at scale</li>
-              <li style="margin-bottom:8px;">Get hands-on with new Figma features before anyone else</li>
-              <li style="margin-bottom:8px;">Connect with designers and builders who share your challenges</li>
-            </ul>
-            <div style="text-align:center;">
-              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
-            </div>
-          </td>
-        </tr>"""
+    <mj-section padding="24px" background-color="#0D99FF">
+      <mj-column>
+        <mj-text align="center" font-size="14px" color="rgba(255,255,255,0.8)" text-transform="uppercase" padding="0 0 8px">
+          You're invited
+        </mj-text>
+        <mj-text align="center" font-size="28px" font-weight="700" color="#FFFFFF" padding="0 0 12px">
+          {brief.campaign_name}
+        </mj-text>
+        <mj-text align="center" font-size="18px" color="rgba(255,255,255,0.9)" padding="0 0 8px">
+          {event_date}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Why attend -->
+    <mj-section padding="24px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 0 16px">
+          Why attend
+        </mj-text>
+        <mj-text font-size="16px" color="#000000" padding="0 0 8px">
+          • Learn how leading teams ship design at scale
+        </mj-text>
+        <mj-text font-size="16px" color="#000000" padding="0 0 8px">
+          • Get hands-on with new Figma features before anyone else
+        </mj-text>
+        <mj-text font-size="16px" color="#000000" padding="0 0 24px">
+          • Connect with designers and builders who share your challenges
+        </mj-text>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>"""
 
     elif brief.template_type == "feature_update":
         return f"""<!-- Feature Update -->
-        <tr>
-          <td style="padding:0 24px 24px;text-align:center;">
-            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#0D99FF;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">New in Figma</p>
-            <h1 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
-            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0 0 24px;max-width:480px;display:inline-block;">{key_message}</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px;background-color:#F5F5F5;">
-            <h2 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">What changed</h2>
-            <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="padding:0 0 16px;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;">Faster load times across all files</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">We rebuilt the rendering engine from scratch. Files open in half the time.</p></td></tr>
-              <tr><td style="padding:0 0 16px;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;">New keyboard shortcuts for power users</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Navigate, select, and transform without touching your mouse. Full shortcut guide inside.</p></td></tr>
-            </table>
-            <div style="text-align:center;padding-top:8px;">
-              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
-            </div>
-          </td>
-        </tr>"""
+    <mj-section padding="0 24px 24px">
+      <mj-column>
+        <mj-text align="center" font-size="14px" color="#0D99FF" text-transform="uppercase" padding="0 0 8px">
+          New in Figma
+        </mj-text>
+        <mj-text align="center" font-size="28px" font-weight="700" color="#000000" padding="0 0 12px">
+          {brief.campaign_name}
+        </mj-text>
+        <mj-text align="center" font-size="16px" color="#666666" padding="0 0 24px" css-class="update-description">
+          {key_message}
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- What changed -->
+    <mj-section padding="24px" background-color="#F5F5F5">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 0 16px">
+          What changed
+        </mj-text>
+        <mj-text font-size="16px" color="#000000" padding="0 0 4px">
+          Faster load times across all files
+        </mj-text>
+        <mj-text font-size="14px" color="#666666" padding="0 0 16px">
+          We rebuilt the rendering engine from scratch. Files open in half the time.
+        </mj-text>
+        <mj-text font-size="16px" color="#000000" padding="0 0 4px">
+          New keyboard shortcuts for power users
+        </mj-text>
+        <mj-text font-size="14px" color="#666666" padding="0 0 16px">
+          Navigate, select, and transform without touching your mouse. Full shortcut guide inside.
+        </mj-text>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>"""
 
     else:  # educational
         return f"""<!-- Newsletter Header -->
-        <tr>
-          <td style="padding:0 24px 24px;text-align:center;">
-            <h1 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
-            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0;max-width:480px;display:inline-block;">{key_message}</p>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:24px;background-color:#F5F5F5;">
-            <h2 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 12px;">What we're thinking about</h2>
-            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.6;margin:0 0 16px;">{brief.goal}</p>
-            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.6;margin:0 0 24px;">The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation.</p>
-            <div style="text-align:center;">
-              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
-            </div>
-          </td>
-        </tr>"""
+    <mj-section padding="0 24px 24px">
+      <mj-column>
+        <mj-text align="center" font-size="28px" font-weight="700" color="#000000" padding="0 0 12px">
+          {brief.campaign_name}
+        </mj-text>
+        <mj-text align="center" font-size="16px" color="#666666" padding="0 0 24px" css-class="newsletter-description">
+          {key_message}
+        </mj-text>
+      </mj-column>
+    </mj-section>
 
+    <!-- Article -->
+    <mj-section padding="24px" background-color="#F5F5F5">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 0 12px">
+          What we're thinking about
+        </mj-text>
+        <mj-text font-size="16px" color="#000000" padding="0 0 16px">
+          {brief.goal}
+        </mj-text>
+        <mj-text font-size="16px" color="#000000" padding="0 0 24px">
+          The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation.
+        </mj-text>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>"""
+
+
+# ── Subject / Preview helpers ──────────────────────────────
 
 def _generate_subject_line(brief: EmailBrief) -> str:
     campaign = brief.campaign_name
