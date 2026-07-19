@@ -22,7 +22,7 @@ from generate import generate_email, GeneratedEmail, get_active_provider, genera
 from brand_check import BrandChecker, BrandCheckReport
 from preview import render_preview
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = secrets.token_hex(32)
 
 ACCESS_PASSWORD = "nicolascage"
