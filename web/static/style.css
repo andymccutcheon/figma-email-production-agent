@@ -226,7 +226,7 @@ body {
 }
 
 .panel-header {
-  padding: 20px 24px;
+  padding: 20px 24px 16px;
   border-bottom: 1px solid var(--border-light);
   display: flex;
   align-items: center;
@@ -290,7 +290,7 @@ body {
    ═══════════════════════════════════════════════════════════ */
 
 .mode-toggle-bar {
-  padding: 14px 24px 16px;
+  padding: 14px 24px 10px;
 }
 
 .mode-toggle {
@@ -328,7 +328,7 @@ body {
 
 /* ── Freeform Input ── */
 .freeform-input {
-  padding: 0 24px 16px;
+  padding: 4px 24px 8px;
   animation: fadeIn var(--duration-normal) var(--ease-out);
 }
 
@@ -365,10 +365,10 @@ body {
    ═══════════════════════════════════════════════════════════ */
 
 #brief-form {
-  padding: 24px;
+  padding: 4px 24px 8px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .field {
@@ -458,11 +458,16 @@ body {
 }
 
 /* ── Generate Button ── */
+#generate-area {
+  padding: 12px 24px 20px;
+}
+
 .btn-generate {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
+  width: 100%;
   background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
   color: var(--text-inverse);
   border: none;
@@ -475,7 +480,6 @@ body {
   cursor: pointer;
   transition: all var(--duration-fast) var(--ease-out);
   box-shadow: var(--shadow-brand);
-  margin-top: 6px;
   position: relative;
   overflow: hidden;
 }
@@ -519,7 +523,7 @@ body {
   font-size: 12px;
   color: var(--text-tertiary);
   text-align: center;
-  margin-top: -4px;
+  margin-top: 10px;
   font-weight: 500;
 }
 
