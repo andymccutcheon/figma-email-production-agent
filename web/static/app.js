@@ -71,15 +71,18 @@ sampleSelect.addEventListener('change', () => {
   document.getElementById('additional_context').value = s.additional_context || '';
 });
 
-// ── Form Submit ──
-form.addEventListener('submit', async (e) => {
+// ── Generate Button ──
+generateBtn.addEventListener('click', (e) => {
   e.preventDefault();
   clearErrors();
 
   if (currentMode === 'freeform') {
-    await submitFreeform();
+    submitFreeform();
   } else {
-    await submitStructured();
+    // Validate structured form fields exist and are accessible
+    if (!formFields.classList.contains('hidden')) {
+      submitStructured();
+    }
   }
 });
 

@@ -121,12 +121,15 @@ For example:
         <textarea id="additional_context" rows="2" placeholder="Anything else the generator should know..."></textarea>
       </div>
 
-      <button type="submit" class="btn-generate" id="generate-btn">
+    </form>
+
+    <div id="generate-area" style="padding:0 24px 24px;">
+      <button type="button" class="btn-generate" id="generate-btn">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z"/><path d="M12 12l8-4.5"/><path d="M12 12v9"/></svg>
         Generate Email
       </button>
       <p class="mode-note" id="mode-note">Demo mode — no API key configured. Realistic simulated output.</p>
-    </form>
+    </div>
 
     <div id="validation-errors" class="errors hidden"></div>
   </section>
