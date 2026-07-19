@@ -171,6 +171,7 @@ def _call_deepseek(system_prompt: str, user_message: str, model: str, max_tokens
     """Call the DeepSeek API with the given model and return the response text."""
     import json as _json
     from urllib.request import Request, urlopen
+    from urllib.error import HTTPError
 
     payload = _json.dumps({
         "model": model,
@@ -191,17 +192,35 @@ def _call_deepseek(system_prompt: str, user_message: str, model: str, max_tokens
     req.add_header("Content-Type", "application/json; charset=utf-8")
     req.add_header("User-Agent", "figma-email-agent/1.0")
 
-    resp = urlopen(req, timeout=60)
-    data = _json.loads(resp.read().decode("utf-8"))
-    return data["choices"][0]["message"]["content"]
+    try:
+        resp = urlopen(req, timeout=60)
+        data = _json.loads(resp.read().decode("utf-8"))
+        content = data["choices"][0]["message"]["content"]
+        if not content or not content.strip():
+            raise ValueError("DeepSeek returned empty content — the model may not support this request or the prompt was rejected")
+        return content
+    except HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"DeepSeek API error ({e.code}): {body}") from e
+    except KeyError:
+        raise RuntimeError(f"DeepSeek returned unexpected response structure: {_json.dumps(data, indent=2)[:500]}") from None
 
 
 def _extract_json(text: str) -> dict:
     """Extract and parse JSON from an LLM response (handles markdown code blocks)."""
+    if not text or not text.strip():
+        raise ValueError("LLM returned empty response — no content to parse")
+
     json_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
     if json_match:
         text = json_match.group(1)
-    return json.loads(text)
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        # Surface what the LLM actually returned for debugging
+        preview = text[:500] + ('...' if len(text) > 500 else '')
+        raise ValueError(f"LLM returned invalid JSON: {e}\nFirst 500 chars of response:\n{preview}") from e
 
 
 def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
