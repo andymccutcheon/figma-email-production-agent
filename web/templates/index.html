@@ -37,6 +37,25 @@
       </div>
     </div>
 
+    <!-- Mode Toggle -->
+    <div class="mode-toggle-bar">
+      <div class="mode-toggle">
+        <button class="mode-option active" data-mode="structured" type="button">Structured</button>
+        <button class="mode-option" data-mode="freeform" type="button">Freeform</button>
+      </div>
+    </div>
+
+    <!-- Freeform Input -->
+    <div id="freeform-input" class="freeform-input hidden">
+      <div class="field">
+        <textarea id="freeform_text" rows="18" placeholder="Paste anything — a Slack message, a brief doc, meeting notes, a creative brief. The agent will parse it into a structured campaign brief.
+
+For example:
+
+"We need an email for the Config 2026 early access list. Past attendees and power users in the US and Europe. Goal is early-bird signups before public announcement. Key message: Config is back, join 10k+ designers in SF June 10-11. CTA should be 'Register early' linking to config.figma.com/2026. Early bird pricing saves $200. Keynote lineup announced next week to registrants first." style="min-height:320px;font-size:14px;line-height:1.65;"></textarea>
+      </div>
+    </div>
+
     <form id="brief-form">
       <div class="field">
         <label for="campaign_name">Campaign Name <span class="required">*</span></label>
@@ -134,6 +153,7 @@
       <div class="spinner"></div>
       <p>Generating your email</p>
       <div class="loading-steps">
+        <span id="step-parse" class="hidden">Parsing brief</span>
         <span id="step-validate">Validating brief</span>
         <span id="step-generate">Generating content</span>
         <span id="step-brand">Running brand check</span>

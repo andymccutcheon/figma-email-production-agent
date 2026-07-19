@@ -286,6 +286,81 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   MODE TOGGLE
+   ═══════════════════════════════════════════════════════════ */
+
+.mode-toggle-bar {
+  padding: 0 24px 16px;
+}
+
+.mode-toggle {
+  display: inline-flex;
+  background: var(--gray-100);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  gap: 0;
+}
+
+.mode-option {
+  padding: 7px 16px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 7px;
+  transition: all var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+}
+
+.mode-option:hover {
+  color: var(--text-primary);
+}
+
+.mode-option.active {
+  background: var(--surface-primary);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: var(--shadow-xs);
+}
+
+/* ── Freeform Input ── */
+.freeform-input {
+  padding: 0 24px 16px;
+  animation: fadeIn var(--duration-normal) var(--ease-out);
+}
+
+.freeform-input textarea {
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--surface-primary);
+  resize: vertical;
+  width: 100%;
+  transition: border-color var(--duration-fast), box-shadow var(--duration-fast);
+}
+
+.freeform-input textarea::placeholder {
+  color: var(--text-tertiary);
+  line-height: 1.65;
+}
+
+.freeform-input textarea:hover {
+  border-color: var(--border-strong);
+}
+
+.freeform-input textarea:focus {
+  outline: none;
+  border-color: var(--brand-400);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+
+/* ═══════════════════════════════════════════════════════════
    BRIEF FORM
    ═══════════════════════════════════════════════════════════ */
 
