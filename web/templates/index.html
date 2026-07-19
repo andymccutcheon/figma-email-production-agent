@@ -246,32 +246,25 @@ For example:
       <div class="preview-card">
         <div class="preview-header">
           <span>Email Preview</span>
-          <div class="preview-tabs">
-            <button class="tab active" data-tab="rendered">Rendered</button>
-            <button class="tab" data-tab="html">HTML</button>
-            <button class="tab" data-tab="plain">Plain Text</button>
+          <div class="preview-header-right">
+            <div class="preview-tabs">
+              <button class="tab active" data-tab="rendered">Rendered</button>
+              <button class="tab" data-tab="html">HTML</button>
+              <button class="tab" data-tab="plain">Plain Text</button>
+            </div>
+            <div class="device-toggle" id="device-toggle">
+              <button class="device-btn active" data-device="desktop" title="Desktop view">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
+              </button>
+              <button class="device-btn" data-device="mobile" title="Mobile view">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
+              </button>
+            </div>
           </div>
         </div>
         <div class="tab-content" id="tab-rendered">
-          <div class="dual-preview">
-            <div class="preview-col">
-              <div class="preview-col-label">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg>
-                Desktop
-              </div>
-              <div class="preview-frame desktop-frame">
-                <iframe id="email-iframe-desktop" sandbox="allow-same-origin"></iframe>
-              </div>
-            </div>
-            <div class="preview-col">
-              <div class="preview-col-label">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>
-                Mobile
-              </div>
-              <div class="preview-frame mobile-frame">
-                <iframe id="email-iframe-mobile" sandbox="allow-same-origin"></iframe>
-              </div>
-            </div>
+          <div class="single-preview" id="preview-wrapper">
+            <iframe id="email-iframe" sandbox="allow-same-origin"></iframe>
           </div>
         </div>
         <div class="tab-content hidden" id="tab-html">

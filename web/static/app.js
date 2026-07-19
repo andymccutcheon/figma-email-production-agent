@@ -87,8 +87,7 @@ document.getElementById('btn-new-campaign').addEventListener('click', () => {
   // Clear results
   document.getElementById('result-subject').textContent = '';
   document.getElementById('result-preview').textContent = '';
-  document.getElementById('email-iframe-desktop').srcdoc = '';
-  document.getElementById('email-iframe-mobile').srcdoc = '';
+  document.getElementById('email-iframe').srcdoc = '';
   document.getElementById('sync-status').classList.add('hidden');
 });
 generateBtn.addEventListener('click', (e) => {
@@ -304,13 +303,13 @@ function showResults(result) {
     violationsDiv.classList.add('hidden');
   }
 
-  // Email iframes
-  document.getElementById('email-iframe-desktop').srcdoc = result.html_body;
-  document.getElementById('email-iframe-mobile').srcdoc = result.html_body;
+  // Email iframe
+  document.getElementById('email-iframe').srcdoc = result.html_body;
   document.getElementById('email-html-code').textContent = result.html_body;
   document.getElementById('email-plain-code').textContent = result.plain_text;
 
   // Mode note
+  const provider = result.provider || 'demo';
   if (provider === 'DeepSeek') {
     modeNote.textContent = 'Live mode \u2014 using DeepSeek API for real generation.';
   } else if (provider === 'Claude') {
@@ -395,6 +394,23 @@ function showResults(result) {
     document.getElementById('detail-context-row').classList.add('hidden');
   }
 }
+
+// ── Device Toggle ──
+let currentDevice = 'desktop';
+const previewWrapper = document.getElementById('preview-wrapper');
+
+document.querySelectorAll('.device-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.device-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentDevice = btn.dataset.device;
+    if (currentDevice === 'mobile') {
+      previewWrapper.classList.add('mobile');
+    } else {
+      previewWrapper.classList.remove('mobile');
+    }
+  });
+});
 
 // Tab switching
 document.querySelectorAll('.tab').forEach(tab => {
