@@ -255,7 +255,7 @@ def _generate_demo(brief: EmailBrief) -> GeneratedEmail:
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{brief.campaign_name}</title>
 </head>
-<body style="margin:0;padding:0;background-color:#F5F5F5;font-family:'Helvetica Neue',Arial,sans-serif;">
+<body style="margin:0;padding:0;background-color:#F5F5F5;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F5F5F5;">
   <tr>
     <td align="center" style="padding:20px 0;">
@@ -324,24 +324,24 @@ def _get_template_content(brief: EmailBrief) -> str:
         return f"""<!-- Hero -->
         <tr>
           <td style="padding:0 24px 24px;text-align:center;">
-            <h1 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">
+            <h1 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">
               {brief.campaign_name}
             </h1>
-            <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0 0 24px;max-width:480px;display:inline-block;">
+            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0 0 24px;max-width:480px;display:inline-block;">
               {key_message}
             </p>
-            <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">
+            <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">
               {brief.cta_text}
             </a>
           </td>
         </tr>
         <tr>
           <td style="padding:24px;background-color:#F5F5F5;">
-            <h2 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">What's new</h2>
+            <h2 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">What's new</h2>
             <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="padding:12px 0;"><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Built for speed</p><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">New rendering engine makes every interaction feel instant, even on complex files.</p></td></tr>
-              <tr><td style="padding:12px 0;"><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Collaborate in real time</p><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Multiplayer cursors now show what everyone's working on — no more stepping on toes.</p></td></tr>
-              <tr><td style="padding:12px 0;"><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Design systems that scale</p><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Variables and modes make it easy to build once and deploy everywhere.</p></td></tr>
+              <tr><td style="padding:12px 0;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Built for speed</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">New rendering engine makes every interaction feel instant, even on complex files.</p></td></tr>
+              <tr><td style="padding:12px 0;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Collaborate in real time</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Multiplayer cursors now show what everyone's working on — no more stepping on toes.</p></td></tr>
+              <tr><td style="padding:12px 0;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;font-weight:600;">Design systems that scale</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Variables and modes make it easy to build once and deploy everywhere.</p></td></tr>
             </table>
           </td>
         </tr>"""
@@ -351,21 +351,21 @@ def _get_template_content(brief: EmailBrief) -> str:
         return f"""<!-- Event Hero -->
         <tr>
           <td style="padding:24px;text-align:center;background-color:#0D99FF;">
-            <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:rgba(255,255,255,0.8);margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">You're invited</p>
-            <h1 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#FFFFFF;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
-            <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:18px;color:rgba(255,255,255,0.9);margin:0 0 8px;">{event_date}</p>
+            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:rgba(255,255,255,0.8);margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">You're invited</p>
+            <h1 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#FFFFFF;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
+            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:18px;color:rgba(255,255,255,0.9);margin:0 0 8px;">{event_date}</p>
           </td>
         </tr>
         <tr>
           <td style="padding:24px;">
-            <h2 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">Why attend</h2>
-            <ul style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.8;margin:0 0 24px;padding:0 0 0 20px;">
+            <h2 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">Why attend</h2>
+            <ul style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.8;margin:0 0 24px;padding:0 0 0 20px;">
               <li style="margin-bottom:8px;">Learn how leading teams ship design at scale</li>
               <li style="margin-bottom:8px;">Get hands-on with new Figma features before anyone else</li>
               <li style="margin-bottom:8px;">Connect with designers and builders who share your challenges</li>
             </ul>
             <div style="text-align:center;">
-              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
+              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
             </div>
           </td>
         </tr>"""
@@ -374,20 +374,20 @@ def _get_template_content(brief: EmailBrief) -> str:
         return f"""<!-- Feature Update -->
         <tr>
           <td style="padding:0 24px 24px;text-align:center;">
-            <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#0D99FF;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">New in Figma</p>
-            <h1 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
-            <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0 0 24px;max-width:480px;display:inline-block;">{key_message}</p>
+            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#0D99FF;margin:0 0 8px;text-transform:uppercase;letter-spacing:1px;">New in Figma</p>
+            <h1 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
+            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0 0 24px;max-width:480px;display:inline-block;">{key_message}</p>
           </td>
         </tr>
         <tr>
           <td style="padding:24px;background-color:#F5F5F5;">
-            <h2 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">What changed</h2>
+            <h2 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 16px;">What changed</h2>
             <table width="100%" cellpadding="0" cellspacing="0">
-              <tr><td style="padding:0 0 16px;"><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;">Faster load times across all files</p><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">We rebuilt the rendering engine from scratch. Files open in half the time.</p></td></tr>
-              <tr><td style="padding:0 0 16px;"><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;">New keyboard shortcuts for power users</p><p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Navigate, select, and transform without touching your mouse. Full shortcut guide inside.</p></td></tr>
+              <tr><td style="padding:0 0 16px;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;">Faster load times across all files</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">We rebuilt the rendering engine from scratch. Files open in half the time.</p></td></tr>
+              <tr><td style="padding:0 0 16px;"><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;margin:0 0 4px;">New keyboard shortcuts for power users</p><p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:14px;color:#666666;margin:0;">Navigate, select, and transform without touching your mouse. Full shortcut guide inside.</p></td></tr>
             </table>
             <div style="text-align:center;padding-top:8px;">
-              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
+              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
             </div>
           </td>
         </tr>"""
@@ -396,17 +396,17 @@ def _get_template_content(brief: EmailBrief) -> str:
         return f"""<!-- Newsletter Header -->
         <tr>
           <td style="padding:0 24px 24px;text-align:center;">
-            <h1 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
-            <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0;max-width:480px;display:inline-block;">{key_message}</p>
+            <h1 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:28px;font-weight:700;color:#000000;margin:0 0 12px;line-height:1.3;">{brief.campaign_name}</h1>
+            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#666666;line-height:1.6;margin:0;max-width:480px;display:inline-block;">{key_message}</p>
           </td>
         </tr>
         <tr>
           <td style="padding:24px;background-color:#F5F5F5;">
-            <h2 style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 12px;">What we're thinking about</h2>
-            <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.6;margin:0 0 16px;">{brief.goal}</p>
-            <p style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.6;margin:0 0 24px;">The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation.</p>
+            <h2 style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:20px;font-weight:600;color:#000000;margin:0 0 12px;">What we're thinking about</h2>
+            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.6;margin:0 0 16px;">{brief.goal}</p>
+            <p style="font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;color:#000000;line-height:1.6;margin:0 0 24px;">The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation.</p>
             <div style="text-align:center;">
-              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
+              <a href="{brief.cta_url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-family:'Figma Standard Text','Helvetica Neue',Arial,sans-serif;font-size:16px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:8px;">{brief.cta_text}</a>
             </div>
           </td>
         </tr>"""

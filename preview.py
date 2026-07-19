@@ -39,7 +39,10 @@ def render_preview(email: GeneratedEmail, brand_report: BrandCheckReport) -> str
 <title>Email Preview — {email.subject_line}</title>
 <style>
   * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F5F5F5; }}
+  @font-face {{ font-family: 'Figma Standard Text'; src: url('/static/fonts/Figma-Standard-Text-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }}
+  @font-face {{ font-family: 'Figma Standard Text'; src: url('/static/fonts/Figma-Standard-Text-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }}
+  @font-face {{ font-family: 'Figma Mono'; src: url('/static/fonts/Figma-Mono-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }}
+  body {{ font-family: 'Figma Standard Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F5F5F5; }}
   .container {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
   .header {{ background: white; padding: 20px 24px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
   .header h1 {{ font-size: 20px; margin-bottom: 8px; }}
