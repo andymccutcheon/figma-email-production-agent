@@ -37,6 +37,9 @@
       </div>
     </div>
 
+    <!-- Brief Input (shown before generation) -->
+    <div id="brief-input">
+
     <!-- Mode Toggle -->
     <div class="mode-toggle-bar">
       <div class="mode-toggle">
@@ -132,6 +135,66 @@ For example:
     </div>
 
     <div id="validation-errors" class="errors hidden"></div>
+
+    </div><!-- /#brief-input -->
+
+    <!-- Campaign Details (shown after generation) -->
+    <div id="campaign-details" class="hidden">
+      <div class="details-list">
+        <div class="detail-item">
+          <span class="detail-label">Campaign</span>
+          <span class="detail-value" id="detail-name"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Audience</span>
+          <span class="detail-value" id="detail-audience"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Goal</span>
+          <span class="detail-value" id="detail-goal"></span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Key Message</span>
+          <span class="detail-value" id="detail-message"></span>
+        </div>
+        <div class="detail-item detail-row">
+          <div class="detail-item">
+            <span class="detail-label">CTA</span>
+            <span class="detail-value" id="detail-cta"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">URL</span>
+            <span class="detail-value mono" id="detail-url"></span>
+          </div>
+        </div>
+        <div class="detail-item detail-row">
+          <div class="detail-item">
+            <span class="detail-label">Tone</span>
+            <span class="detail-value" id="detail-tone"></span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Template</span>
+            <span class="detail-value" id="detail-template"></span>
+          </div>
+        </div>
+        <div class="detail-item hidden" id="detail-event-row">
+          <span class="detail-label">Event Date</span>
+          <span class="detail-value" id="detail-event"></span>
+        </div>
+        <div class="detail-item hidden" id="detail-context-row">
+          <span class="detail-label">Additional Context</span>
+          <span class="detail-value" id="detail-context"></span>
+        </div>
+      </div>
+
+      <div class="details-actions">
+        <button class="btn-new-campaign" id="btn-new-campaign">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+          New Campaign
+        </button>
+      </div>
+    </div>
+
   </section>
 
   <!-- RIGHT: Results -->

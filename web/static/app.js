@@ -15,6 +15,9 @@ const modeNote = document.getElementById('mode-note');
 const freeformInput = document.getElementById('freeform-input');
 const freeformTextarea = document.getElementById('freeform_text');
 const formFields = document.getElementById('brief-form');
+const briefInput = document.getElementById('brief-input');
+const campaignDetails = document.getElementById('campaign-details');
+const panelHeader = document.querySelector('.brief-panel .panel-header h2');
 
 // Sample briefs injected from server
 let samples = {};
@@ -70,7 +73,24 @@ sampleSelect.addEventListener('change', () => {
   document.getElementById('additional_context').value = s.additional_context || '';
 });
 
-// ── Generate Button ──
+// ── New Campaign button ──
+document.getElementById('btn-new-campaign').addEventListener('click', () => {
+  // Reset to input mode
+  campaignDetails.classList.add('hidden');
+  briefInput.classList.remove('hidden');
+  generateBtn.classList.remove('hidden');
+  document.getElementById('generate-area').classList.remove('hidden');
+  panelHeader.textContent = 'Campaign Brief';
+  emptyState.classList.remove('hidden');
+  resultsContent.classList.add('hidden');
+
+  // Clear results
+  document.getElementById('result-subject').textContent = '';
+  document.getElementById('result-preview').textContent = '';
+  document.getElementById('email-iframe-desktop').srcdoc = '';
+  document.getElementById('email-iframe-mobile').srcdoc = '';
+  document.getElementById('sync-status').classList.add('hidden');
+});
 generateBtn.addEventListener('click', (e) => {
   e.preventDefault();
   clearErrors();
@@ -328,6 +348,51 @@ function showResults(result) {
     document.getElementById('template_type').value = p.template_type || 'educational';
     document.getElementById('event_date').value = p.event_date || '';
     document.getElementById('additional_context').value = p.additional_context || '';
+  }
+
+  // Gather brief data from form fields (works in both modes since parsed fields backfill)
+  const briefData = {
+    campaign_name: document.getElementById('campaign_name').value || result.subject_line?.split('\u2014')[0]?.trim() || '',
+    audience: document.getElementById('audience').value || '',
+    goal: document.getElementById('goal').value || '',
+    key_message: document.getElementById('key_message').value || '',
+    cta_text: document.getElementById('cta_text').value || '',
+    cta_url: document.getElementById('cta_url').value || '',
+    tone: document.getElementById('tone').value || '',
+    template_type: document.getElementById('template_type').value || '',
+    event_date: document.getElementById('event_date').value || '',
+    additional_context: document.getElementById('additional_context').value || '',
+  };
+
+  // Switch left panel to campaign details
+  briefInput.classList.add('hidden');
+  campaignDetails.classList.remove('hidden');
+  panelHeader.textContent = 'Campaign Details';
+
+  // Populate details
+  document.getElementById('detail-name').textContent = briefData.campaign_name || '\u2014';
+  document.getElementById('detail-audience').textContent = briefData.audience || '\u2014';
+  document.getElementById('detail-goal').textContent = briefData.goal || '\u2014';
+  document.getElementById('detail-message').textContent = briefData.key_message || '\u2014';
+  document.getElementById('detail-cta').textContent = (briefData.cta_text || '\u2014') + ' \u2192';
+  document.getElementById('detail-url').textContent = briefData.cta_url || '\u2014';
+
+  const toneMap = {product_launch:'Product Launch',event:'Event',feature_update:'Feature Update',educational:'Educational',reengagement:'Re-engagement'};
+  document.getElementById('detail-tone').textContent = toneMap[briefData.tone] || briefData.tone || '\u2014';
+  const templateMap = {product_launch:'Product Launch',event_invite:'Event Invite',feature_update:'Feature Update',educational:'Educational',reengagement:'Re-engagement'};
+  document.getElementById('detail-template').textContent = templateMap[briefData.template_type] || briefData.template_type || '\u2014';
+
+  if (briefData.event_date) {
+    document.getElementById('detail-event-row').classList.remove('hidden');
+    document.getElementById('detail-event').textContent = briefData.event_date;
+  } else {
+    document.getElementById('detail-event-row').classList.add('hidden');
+  }
+  if (briefData.additional_context) {
+    document.getElementById('detail-context-row').classList.remove('hidden');
+    document.getElementById('detail-context').textContent = briefData.additional_context;
+  } else {
+    document.getElementById('detail-context-row').classList.add('hidden');
   }
 }
 
