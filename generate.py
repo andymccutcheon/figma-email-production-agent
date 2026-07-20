@@ -19,9 +19,14 @@ from typing import Optional
 from dotenv import load_dotenv
 
 from intake import EmailBrief
+from asset_pool import (
+    hero_image as pool_hero,
+    row_image as pool_row,
+    feature_hero as pool_feature_hero,
+    feature_grid as pool_feature_grid,
+    icon_image as pool_icon,
+)
 from email_html import (
-    PLACEHOLDER_HERO,
-    PLACEHOLDER_ROW,
     body_copy,
     bulleted_resources,
     cta_button,
@@ -137,17 +142,17 @@ Additional Context: {brief.additional_context or 'None'}
 Generate the email now. Return ONLY valid JSON with copy slots — no html_body, no HTML markup."""
 
 
-def _build_rows_from_content(rows: list, default_url: str) -> str:
+def _build_rows_from_content(rows: list, default_url: str, seed: str = "") -> str:
     """Build image-left rows from LLM content slots."""
     html = ""
-    for row in rows:
+    for i, row in enumerate(rows):
         title = row.get("title", "")
         body = row.get("body", "")
         link_text = row.get("link_text", "Learn more")
         link_url = row.get("link_url", default_url)
         img_alt = row.get("image_alt", title or "Feature")
         html += image_left_row(
-            PLACEHOLDER_ROW, img_alt, title, body, link_text, link_url, link_url
+            pool_row(i, seed), img_alt, title, body, link_text, link_url, link_url
         )
     return html
 
@@ -162,18 +167,19 @@ def _assemble_html_from_content(brief: EmailBrief, data: dict) -> str:
     headline_text = content.get("headline") or brief.campaign_name
     intro = content.get("intro") or brief.key_message
     preview = data.get("preview_text") or _generate_preview_text(brief)
+    seed = brief.campaign_name
 
     if template == "product_launch":
-        rows = _build_rows_from_content(content.get("rows") or [], url)
+        rows = _build_rows_from_content(content.get("rows") or [], url, seed)
         if not rows:
             rows = _demo_rows(brief, [
                 ("Feature one", brief.key_message, "Learn more", url, "Feature highlight"),
                 ("Built for teams", "Real-time collaboration on every canvas.", "See how", url, "Collaboration"),
                 ("Ship faster", "From idea to prototype without leaving Figma.", "Explore", url, "Prototyping"),
-            ])
+            ], seed)
         body = (
             logo_block()
-            + hero_image(PLACEHOLDER_HERO, headline_text, url)
+            + hero_image(pool_hero(seed), headline_text, url)
             + headline(headline_text)
             + body_copy(intro)
             + cta_button(cta_text, url, "purple")
@@ -184,16 +190,16 @@ def _assemble_html_from_content(brief: EmailBrief, data: dict) -> str:
 
     elif template == "event_invite":
         event_date = brief.event_date or "Coming soon"
-        rows = _build_rows_from_content(content.get("rows") or [], url)
+        rows = _build_rows_from_content(content.get("rows") or [], url, seed)
         if not rows:
             rows = _demo_rows(brief, [
                 ("Learn from the best", "Sessions from teams shipping at scale.", "View agenda", url, "Event session"),
                 ("Hands-on workshops", "Practical sessions led by the Figma team.", "Register now", url, "Workshop"),
                 ("Connect with peers", "The hallway conversations matter too.", "Join us", url, "Community"),
-            ])
+            ], seed)
         body = (
             logo_block()
-            + hero_image(PLACEHOLDER_HERO, headline_text, url)
+            + hero_image(pool_hero(seed), headline_text, url)
             + headline(headline_text)
             + body_copy(f"{event_date} · {intro}")
             + cta_button(cta_text, url, "purple")
@@ -207,27 +213,26 @@ def _assemble_html_from_content(brief: EmailBrief, data: dict) -> str:
         left = grid.get("left") or {}
         right = grid.get("right") or {}
         icon = content.get("icon_section") or {}
-        card_hero = "https://static.figma.com/uploads/09d331398f2b57bee77b7339209ec2cd4190d6bb"
         body = (
             logo_block()
             + newsletter_card_open()
-            + hero_image(card_hero, "Release Notes", url)
+            + hero_image(pool_feature_hero(seed), "Release Notes", url)
             + headline(headline_text, "inter")
             + body_copy(intro, "inter", "left")
             + two_column_grid(
-                "https://static.figma.com/uploads/7cbabd510cbe2f41dc9ca3a027f058d08ea71223",
+                pool_feature_grid(0, seed),
                 left.get("title", "Feature highlight"),
                 left.get("title", "Feature highlight one"),
                 left.get("body", brief.key_message),
                 left.get("link_url", url),
-                PLACEHOLDER_ROW,
+                pool_row(0, seed),
                 right.get("title", "Feature highlight two"),
                 right.get("title", "Feature highlight two"),
                 right.get("body", "New improvements across the product."),
                 right.get("link_url", url),
             )
             + icon_list_row(
-                PLACEHOLDER_ROW,
+                pool_icon(0, seed),
                 "Feature icon",
                 icon.get("title", "And a whole lot more"),
                 icon.get("body", "Deeper integrations with the tools your team already uses."),
@@ -238,16 +243,16 @@ def _assemble_html_from_content(brief: EmailBrief, data: dict) -> str:
         )
 
     elif template == "reengagement":
-        rows = _build_rows_from_content(content.get("rows") or [], url)
+        rows = _build_rows_from_content(content.get("rows") or [], url, seed)
         if not rows:
             rows = _demo_rows(brief, [
                 ("AI features are live", "Generate UI from text and autocomplete designs.", "Try AI", url, "Figma AI"),
                 ("Dev Mode updates", "Annotated specs and code snippets in 8 languages.", "Open Dev Mode", url, "Dev Mode"),
                 ("2x faster loading", "Files open in half the time.", "See what's new", url, "Performance"),
-            ])
+            ], seed)
         body = (
             logo_block()
-            + hero_image(PLACEHOLDER_HERO, headline_text, url)
+            + hero_image(pool_hero(seed), headline_text, url)
             + headline(headline_text)
             + body_copy(intro)
             + rows
@@ -271,7 +276,7 @@ def _assemble_html_from_content(brief: EmailBrief, data: dict) -> str:
         closing = content.get("closing") or "That's all for now :) We'll be back with more tips soon."
         body = (
             logo_block()
-            + hero_image(PLACEHOLDER_HERO, headline_text, url)
+            + hero_image(pool_hero(seed), headline_text, url)
             + headline(headline_text)
             + body_copy(intro)
             + bulleted_resources(bullet_items)
@@ -548,12 +553,12 @@ def _build_demo_html(brief: EmailBrief) -> str:
     return wrap_document(brief.campaign_name, preview, content, lineage=lineage)
 
 
-def _demo_rows(brief: EmailBrief, rows: list[tuple[str, str, str, str, str]]) -> str:
+def _demo_rows(brief: EmailBrief, rows: list[tuple[str, str, str, str, str]], seed: str = "") -> str:
     """Build image-left rows from (title, body, link_text, link_url, img_alt) tuples."""
     html = ""
-    for title, body, link_text, link_url, img_alt in rows:
+    for i, (title, body, link_text, link_url, img_alt) in enumerate(rows):
         html += image_left_row(
-            PLACEHOLDER_ROW, img_alt, title, body, link_text, link_url, brief.cta_url
+            pool_row(i, seed), img_alt, title, body, link_text, link_url, brief.cta_url
         )
     return html
 
@@ -561,6 +566,7 @@ def _demo_rows(brief: EmailBrief, rows: list[tuple[str, str, str, str, str]]) ->
 def _get_template_html(brief: EmailBrief) -> str:
     """Return v4.0 HTML content matching figma-examples archetypes."""
     url = brief.cta_url
+    seed = brief.campaign_name
 
     # ── Product Launch (Untitled-1: Whyte onboarding row layout) ──
     if brief.template_type == "product_launch":
@@ -584,10 +590,10 @@ def _get_template_html(brief: EmailBrief) -> str:
                 "Variables, modes, and component properties let you build once and deploy everywhere.",
                 "Explore systems", url, "Design systems in Figma",
             ),
-        ])
+        ], seed)
         return (
             logo_block()
-            + hero_image(PLACEHOLDER_HERO, brief.campaign_name, url)
+            + hero_image(pool_hero(seed), brief.campaign_name, url)
             + headline(brief.campaign_name)
             + body_copy(intro)
             + cta_button(brief.cta_text, url, "purple")
@@ -601,7 +607,7 @@ def _get_template_html(brief: EmailBrief) -> str:
         event_date = brief.event_date or "Coming soon"
         return (
             logo_block()
-            + hero_image(PLACEHOLDER_HERO, brief.campaign_name, url)
+            + hero_image(pool_hero(seed), brief.campaign_name, url)
             + headline(brief.campaign_name)
             + body_copy(f"{event_date} · {brief.key_message}")
             + cta_button(brief.cta_text, url, "purple")
@@ -621,34 +627,33 @@ def _get_template_html(brief: EmailBrief) -> str:
                     "The hallway conversations are as valuable as the keynotes.",
                     "Join the community", url, "Community at Config",
                 ),
-            ])
+            ], seed)
             + cta_button(brief.cta_text, url, "purple")
             + footer("whyte")
         )
 
     # ── Feature Update (Untitled-2: Inter newsletter card) ──
     if brief.template_type == "feature_update":
-        card_hero = "https://static.figma.com/uploads/09d331398f2b57bee77b7339209ec2cd4190d6bb"
         return (
             logo_block()
             + newsletter_card_open()
-            + hero_image(card_hero, "Release Notes", url)
+            + hero_image(pool_feature_hero(seed), "Release Notes", url)
             + headline(brief.campaign_name, "inter")
             + body_copy(brief.key_message, "inter", "left")
             + two_column_grid(
-                "https://static.figma.com/uploads/7cbabd510cbe2f41dc9ca3a027f058d08ea71223",
+                pool_feature_grid(0, seed),
                 "Feature highlight one",
                 "Built for speed",
                 "Files open in half the time — even complex canvases with thousands of layers.",
                 url,
-                PLACEHOLDER_ROW,
+                pool_row(0, seed),
                 "Feature highlight two",
                 "Smarter workflows",
                 "New shortcuts, improved search, and better layer organization.",
                 url,
             )
             + icon_list_row(
-                PLACEHOLDER_ROW,
+                pool_icon(0, seed),
                 "Integration icon",
                 "And a whole lot more",
                 "Deeper integrations with the tools your team already uses.",
@@ -662,7 +667,7 @@ def _get_template_html(brief: EmailBrief) -> str:
     if brief.template_type == "reengagement":
         return (
             logo_block()
-            + hero_image(PLACEHOLDER_HERO, "Go to Figma", url)
+            + hero_image(pool_hero(seed), "Go to Figma", url)
             + headline("A lot's happened")
             + body_copy(brief.key_message)
             + _demo_rows(brief, [
@@ -681,7 +686,7 @@ def _get_template_html(brief: EmailBrief) -> str:
                     "We rebuilt the rendering engine. Files open in half the time.",
                     "See what's new", url, "Faster file loading",
                 ),
-            ])
+            ], seed)
             + cta_button(brief.cta_text or "Go to Figma", url, "outline")
             + footer("whyte")
         )
@@ -689,7 +694,7 @@ def _get_template_html(brief: EmailBrief) -> str:
     # ── Educational (Untitled-4: bulleted resources + outline CTA) ──
     return (
         logo_block()
-        + hero_image(PLACEHOLDER_HERO, brief.campaign_name, url)
+        + hero_image(pool_hero(seed), brief.campaign_name, url)
         + headline(brief.campaign_name)
         + body_copy(brief.key_message)
         + bulleted_resources([
