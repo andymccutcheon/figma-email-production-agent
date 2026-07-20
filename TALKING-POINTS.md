@@ -157,9 +157,18 @@
 - A/B testing infrastructure built into the pipeline rather than bolted on
 
 **If you get the "how do you stay on brand?" question:**
-- 13 deterministic brand rules in brand_check.py — not asking the LLM to check itself
-- Separation of concerns: the LLM generates, the code validates
-- In production: add visual diffing against approved templates
+
+Don't just say "I used the brand guidelines." Walk through the four sources:
+
+1. **Figma's actual brand guidelines** — colors (`#0D99FF`, `#5551FF`, the full 27-color palette), fonts (Whyte, Inter, Helvetica Neue), logo requirements. These are in `context/brand-guidelines.md` — the same doc the LLM reads for generation. The checker enforces what the LLM was told to produce.
+
+2. **Figma's voice and tone guide** — forbidden phrases like "game-changing" and "revolutionary" came directly from `context/voice-and-tone.md`. Figma's brand voice is confident but not hyperbolic. The checker catches words that undermine that.
+
+3. **Four real Figma production emails** — I reverse-engineered the structural patterns from `figma-examples/`. That's where the CTA color rules came from: production lifecycle emails use `#5551FF`, newsletters use `#000000`. I didn't invent those — I observed them.
+
+4. **The Email Marketing Coalition's 2026 accessibility report** — 96% of marketing emails fail automated accessibility checks. Six of the 16 rules are accessibility rules (heading hierarchy, alt text, descriptive links, table roles, title tags, language attributes). These aren't "nice to have" — they're the difference between an email 15% of recipients can read and one they can't.
+
+**The key framing:** "I don't ask the LLM if it stayed on-brand — that's asking a creative tool to audit itself. Every check is a regex, a hex code match, or a structural pattern. It runs in milliseconds, it's reproducible, and it can't hallucinate. The LLM generates; the code validates."
 
 **If you get the "will this replace designers?" question:**
 - No. It handles the mechanical parts — copy assembly, HTML construction, brand checking
