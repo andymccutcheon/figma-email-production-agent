@@ -4,18 +4,49 @@
 Generate a complete, production-faithful Figma marketing email from a structured brief. Output matches real sends in `figma-examples/` — table-based HTML, no MJML, no compilation step.
 
 ## Output Format
-Return a JSON object:
+Return a JSON object with **copy slots only** — do NOT include `html_body`. Python assembles the HTML from these fields using the v4.0 section library.
+
 ```json
 {
   "subject_line": "...",
   "preview_text": "...",
-  "html_body": "<!DOCTYPE html><html>...</html>",
   "plain_text": "...",
-  "template_used": "...",
-  "confidence_score": 1-5
+  "template_used": "product_launch",
+  "confidence_score": 4,
+  "content": {
+    "headline": "...",
+    "intro": "...",
+    "rows": [
+      {
+        "title": "...",
+        "body": "...",
+        "link_text": "Learn more",
+        "link_url": "https://figma.com/...",
+        "image_alt": "..."
+      }
+    ],
+    "bullets": [
+      {"lead": "Get started:", "link_text": "Learn how", "link_url": "https://..."}
+    ],
+    "closing": "That's all for now :)",
+    "grid": {
+      "left": {"title": "...", "body": "...", "link_url": "https://..."},
+      "right": {"title": "...", "body": "...", "link_url": "https://..."}
+    },
+    "icon_section": {"title": "And a whole lot more", "body": "..."}
+  }
 }
 ```
-The `html_body` MUST be a complete HTML document. Do NOT use MJML.
+
+**Required fields by template:**
+
+| template_type | content fields |
+|---------------|----------------|
+| product_launch, event_invite, reengagement | headline, intro, rows (3 items) |
+| educational | headline, intro, bullets (3 items), closing |
+| feature_update | headline, intro, grid.left, grid.right, icon_section |
+
+Do NOT output HTML, MJML, or markdown fences. JSON only.
 
 ---
 
@@ -146,7 +177,7 @@ Use hosted icons from `static.figma.com/uploads/`.
 4. Dark mode: `color-scheme` meta + `.light-img`/`.dark-img` classes
 5. Preview text: hidden div with `\u00a0` spacers after text
 6. Logo: 110px wordmark from `static.figma.com`, NOT Customer.io CDN
-7. Output HTML only — no MJML, no markdown fences in JSON
+7. Return copy slots in JSON — Python builds the HTML document
 
 ---
 
@@ -182,6 +213,7 @@ Use hosted icons from `static.figma.com/uploads/`.
 1 = unsure. Be honest.
 
 ## Version History
+- v4.1: LLM outputs copy slots only; Python assembles HTML via email_html.py (fixes token truncation in production).
 - v4.0: Production design system from figma-examples/ — Whyte/Inter lineages, 650px, #5551FF CTAs, section library, production footer.
 - v3.1: Switched from MJML to direct HTML output.
 - v3.0: Abstract design system (superseded by v4.0).

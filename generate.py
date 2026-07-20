@@ -2,8 +2,9 @@
 Email Generator — LLM-powered email creation using table-based HTML.
 
 The pipeline is:
-  1. LLM (or demo fallback) produces production-ready HTML email markup
-  2. Brand checker and preview consume the HTML directly
+  1. LLM returns copy slots (subject, preview, rows, etc.) as JSON
+  2. Python assembles production HTML via email_html.py builders
+  3. Brand checker and preview consume the HTML directly
 
 Primary provider: DeepSeek (OpenAI-compatible API).
 Falls back to demo/simulated generation when no API key is available.
@@ -132,7 +133,172 @@ Template: {brief.template_type}
 Additional Context: {brief.additional_context or 'None'}
 {"Event Date: " + brief.event_date if brief.event_date else ""}
 
-Generate the email now. Return ONLY valid JSON — no other text."""
+Generate the email now. Return ONLY valid JSON with copy slots — no html_body, no HTML markup."""
+
+
+def _build_rows_from_content(rows: list, default_url: str) -> str:
+    """Build image-left rows from LLM content slots."""
+    html = ""
+    for row in rows:
+        title = row.get("title", "")
+        body = row.get("body", "")
+        link_text = row.get("link_text", "Learn more")
+        link_url = row.get("link_url", default_url)
+        img_alt = row.get("image_alt", title or "Feature")
+        html += image_left_row(
+            PLACEHOLDER_ROW, img_alt, title, body, link_text, link_url, link_url
+        )
+    return html
+
+
+def _assemble_html_from_content(brief: EmailBrief, data: dict) -> str:
+    """Assemble production HTML from LLM copy slots using email_html builders."""
+    content = data.get("content") or {}
+    template = data.get("template_used") or brief.template_type
+    lineage = _lineage_for_template(template)
+    url = brief.cta_url
+    cta_text = brief.cta_text
+    headline_text = content.get("headline") or brief.campaign_name
+    intro = content.get("intro") or brief.key_message
+    preview = data.get("preview_text") or _generate_preview_text(brief)
+
+    if template == "product_launch":
+        rows = _build_rows_from_content(content.get("rows") or [], url)
+        if not rows:
+            rows = _demo_rows(brief, [
+                ("Feature one", brief.key_message, "Learn more", url, "Feature highlight"),
+                ("Built for teams", "Real-time collaboration on every canvas.", "See how", url, "Collaboration"),
+                ("Ship faster", "From idea to prototype without leaving Figma.", "Explore", url, "Prototyping"),
+            ])
+        body = (
+            logo_block()
+            + hero_image(PLACEHOLDER_HERO, headline_text, url)
+            + headline(headline_text)
+            + body_copy(intro)
+            + cta_button(cta_text, url, "purple")
+            + rows
+            + cta_button(cta_text, url, "purple")
+            + footer("whyte")
+        )
+
+    elif template == "event_invite":
+        event_date = brief.event_date or "Coming soon"
+        rows = _build_rows_from_content(content.get("rows") or [], url)
+        if not rows:
+            rows = _demo_rows(brief, [
+                ("Learn from the best", "Sessions from teams shipping at scale.", "View agenda", url, "Event session"),
+                ("Hands-on workshops", "Practical sessions led by the Figma team.", "Register now", url, "Workshop"),
+                ("Connect with peers", "The hallway conversations matter too.", "Join us", url, "Community"),
+            ])
+        body = (
+            logo_block()
+            + hero_image(PLACEHOLDER_HERO, headline_text, url)
+            + headline(headline_text)
+            + body_copy(f"{event_date} · {intro}")
+            + cta_button(cta_text, url, "purple")
+            + rows
+            + cta_button(cta_text, url, "purple")
+            + footer("whyte")
+        )
+
+    elif template == "feature_update":
+        grid = content.get("grid") or {}
+        left = grid.get("left") or {}
+        right = grid.get("right") or {}
+        icon = content.get("icon_section") or {}
+        card_hero = "https://static.figma.com/uploads/09d331398f2b57bee77b7339209ec2cd4190d6bb"
+        body = (
+            logo_block()
+            + newsletter_card_open()
+            + hero_image(card_hero, "Release Notes", url)
+            + headline(headline_text, "inter")
+            + body_copy(intro, "inter", "left")
+            + two_column_grid(
+                "https://static.figma.com/uploads/7cbabd510cbe2f41dc9ca3a027f058d08ea71223",
+                left.get("title", "Feature highlight"),
+                left.get("title", "Feature highlight one"),
+                left.get("body", brief.key_message),
+                left.get("link_url", url),
+                PLACEHOLDER_ROW,
+                right.get("title", "Feature highlight two"),
+                right.get("title", "Feature highlight two"),
+                right.get("body", "New improvements across the product."),
+                right.get("link_url", url),
+            )
+            + icon_list_row(
+                PLACEHOLDER_ROW,
+                "Feature icon",
+                icon.get("title", "And a whole lot more"),
+                icon.get("body", "Deeper integrations with the tools your team already uses."),
+            )
+            + cta_button(cta_text, url, "black", "inter")
+            + newsletter_card_close()
+            + footer("inter")
+        )
+
+    elif template == "reengagement":
+        rows = _build_rows_from_content(content.get("rows") or [], url)
+        if not rows:
+            rows = _demo_rows(brief, [
+                ("AI features are live", "Generate UI from text and autocomplete designs.", "Try AI", url, "Figma AI"),
+                ("Dev Mode updates", "Annotated specs and code snippets in 8 languages.", "Open Dev Mode", url, "Dev Mode"),
+                ("2x faster loading", "Files open in half the time.", "See what's new", url, "Performance"),
+            ])
+        body = (
+            logo_block()
+            + hero_image(PLACEHOLDER_HERO, headline_text, url)
+            + headline(headline_text)
+            + body_copy(intro)
+            + rows
+            + cta_button(cta_text or "Go to Figma", url, "outline")
+            + footer("whyte")
+        )
+
+    else:
+        bullets = content.get("bullets") or []
+        if bullets:
+            bullet_items = [
+                (b.get("lead", ""), b.get("link_text", "Learn how"), b.get("link_url", url))
+                for b in bullets
+            ]
+        else:
+            bullet_items = [
+                ("Get started:", "Learn how", url),
+                ("Explore templates:", "Browse the gallery", url),
+                ("Join the community:", "Find your people", url),
+            ]
+        closing = content.get("closing") or "That's all for now :) We'll be back with more tips soon."
+        body = (
+            logo_block()
+            + hero_image(PLACEHOLDER_HERO, headline_text, url)
+            + headline(headline_text)
+            + body_copy(intro)
+            + bulleted_resources(bullet_items)
+            + body_copy(closing, align="left")
+            + cta_button(cta_text or "Go to Figma", url, "outline")
+            + footer("whyte")
+        )
+
+    return wrap_document(brief.campaign_name, preview, body, lineage=lineage)
+
+
+def _email_from_llm_data(brief: EmailBrief, data: dict) -> GeneratedEmail:
+    """Build GeneratedEmail from LLM JSON — assembles HTML unless legacy html_body present."""
+    if data.get("html_body"):
+        html_body = _normalize_html_body(data["html_body"])
+    else:
+        html_body = _assemble_html_from_content(brief, data)
+
+    plain_text = data.get("plain_text") or _html_to_plain_text(html_body)
+
+    return GeneratedEmail(
+        subject_line=data.get("subject_line") or _generate_subject_line(brief),
+        preview_text=data.get("preview_text") or _generate_preview_text(brief),
+        html_body=html_body,
+        plain_text=plain_text,
+        template_used=data.get("template_used") or brief.template_type,
+        confidence_score=int(data.get("confidence_score", 4)),
+    )
 
 
 # ── DeepSeek API ───────────────────────────────────────────
@@ -194,20 +360,16 @@ def _extract_json(text: str) -> dict:
 
 
 def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
-    """Generate a full email using DeepSeek Pro. LLM outputs HTML directly."""
+    """Generate email using DeepSeek Pro. LLM outputs copy slots; Python assembles HTML."""
     system_prompt = build_system_prompt(brief)
     response_text = _call_deepseek(
         system_prompt=system_prompt,
-        user_message="Generate the email based on the brief and system instructions. Return only valid JSON.",
+        user_message="Generate the email based on the brief and system instructions. Return only valid JSON with copy slots.",
         model=DEEPSEEK_PRO_MODEL,
+        max_tokens=2048,
     )
     data = _extract_json(response_text)
-
-    html_body = data.get("html_body", "")
-    if html_body:
-        data["html_body"] = _normalize_html_body(html_body)
-
-    return GeneratedEmail(**{k: data[k] for k in GeneratedEmail.__dataclass_fields__ if k in data})
+    return _email_from_llm_data(brief, data)
 
 
 def generate_subject_variations(brief: EmailBrief, count: int = 3) -> list[dict]:
@@ -282,12 +444,7 @@ def _generate_with_claude(brief: EmailBrief, api_key: str) -> GeneratedEmail:
         response_text = json_match.group(1)
 
     data = json.loads(response_text)
-
-    html_body = data.get("html_body", "")
-    if html_body:
-        data["html_body"] = _normalize_html_body(html_body)
-
-    return GeneratedEmail(**{k: data[k] for k in GeneratedEmail.__dataclass_fields__ if k in data})
+    return _email_from_llm_data(brief, data)
 
 
 def get_active_provider() -> str:

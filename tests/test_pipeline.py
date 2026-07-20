@@ -192,6 +192,66 @@ def test_markdown_parser():
     print("✓ markdown_parser: All fields parsed correctly")
 
 
+def test_assemble_html_from_content():
+    """LLM copy slots should assemble into valid production HTML."""
+    from generate import _assemble_html_from_content, _email_from_llm_data
+
+    brief = EmailBrief(
+        campaign_name="Figma AI Launch",
+        audience="Design leads",
+        goal="Drive trial signups",
+        key_message="AI features are now available in Figma.",
+        cta_text="Try Figma AI",
+        cta_url="https://figma.com/ai",
+        tone="product_launch",
+        template_type="product_launch",
+    )
+    data = {
+        "subject_line": "AI-powered design, now in Figma",
+        "preview_text": "Autocomplete, text-to-design, and layer cleanup.",
+        "plain_text": "AI is here. Try it at figma.com/ai",
+        "template_used": "product_launch",
+        "confidence_score": 5,
+        "content": {
+            "headline": "Meet Figma AI",
+            "intro": "Your creative copilot is here.",
+            "rows": [
+                {
+                    "title": "Autocomplete",
+                    "body": "Finish layouts faster with smart suggestions.",
+                    "link_text": "Learn more",
+                    "link_url": "https://figma.com/ai",
+                    "image_alt": "Autocomplete in Figma",
+                },
+                {
+                    "title": "Text to design",
+                    "body": "Generate UI from a simple prompt.",
+                    "link_text": "See examples",
+                    "link_url": "https://figma.com/ai",
+                    "image_alt": "Text to design",
+                },
+                {
+                    "title": "Layer cleanup",
+                    "body": "Let AI handle tedious layer work.",
+                    "link_text": "Try it now",
+                    "link_url": "https://figma.com/ai",
+                    "image_alt": "Layer cleanup",
+                },
+            ],
+        },
+    }
+    email = _email_from_llm_data(brief, data)
+    assert email.html_body.startswith("<!DOCTYPE html>")
+    assert "Meet Figma AI" in email.html_body
+    assert "5551FF" in email.html_body or "#5551FF" in email.html_body
+    assert "760 Market St" in email.html_body
+
+    checker = BrandChecker()
+    report = checker.check(email.subject_line, email.html_body, email.plain_text)
+    assert report.passed, f"Expected brand check to pass, got: {report.violations}"
+    print("✓ assemble_html_from_content: slots assembled and brand check passed")
+
+
 def run_all_tests():
     """Run all eval tests."""
     print("\n" + "=" * 60)
@@ -212,6 +272,9 @@ def run_all_tests():
             test_brand_check_forbidden_phrase,
             test_brand_check_exclamation_marks,
             test_brand_check_clean_email,
+        ]),
+        ("Generator", [
+            test_assemble_html_from_content,
         ]),
         ("Parser", [
             test_markdown_parser,
