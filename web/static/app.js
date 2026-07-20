@@ -398,7 +398,6 @@ function showResults(result) {
     }
     // Sync failures are suppressed in the UI — sync is still experimental
   }
-  }
   if (window.innerWidth < 960) {
     document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth' });
   }
