@@ -304,48 +304,82 @@ def _email_from_llm_data(brief: EmailBrief, data: dict) -> GeneratedEmail:
 
 # ── DeepSeek API ───────────────────────────────────────────
 
-def _call_deepseek(system_prompt: str, user_message: str, model: str, max_tokens: int = 4096) -> str:
+def _call_deepseek(
+    system_prompt: str,
+    user_message: str,
+    model: str,
+    max_tokens: int = 4096,
+    *,
+    json_mode: bool = False,
+    disable_thinking: bool = True,
+) -> str:
     """Call the DeepSeek API with the given model and return the response text."""
     import json as _json
     from urllib.request import Request, urlopen
     from urllib.error import HTTPError
 
-    payload = _json.dumps({
-        "model": model,
-        "max_tokens": max_tokens,
-        "temperature": 0.7,
-        # V4 defaults to thinking mode, which can consume tokens in reasoning_content
-        # and leave content empty for structured JSON tasks.
-        "thinking": {"type": "disabled"},
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ],
-    }, ensure_ascii=False).encode("utf-8")
+    def _request(token_budget: int) -> tuple[str, dict]:
+        payload: dict = {
+            "model": model,
+            "max_tokens": token_budget,
+            "temperature": 0.7,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+        if disable_thinking:
+            # deepseek-v4-pro defaults to thinking mode, which can consume the entire
+            # max_tokens budget in reasoning_content and return empty content.
+            payload["extra_body"] = {"thinking": {"type": "disabled"}}
 
-    req = Request(
-        f"{DEEPSEEK_BASE_URL}/chat/completions",
-        data=payload,
-        method="POST",
-    )
-    req.add_header("Authorization", f"Bearer {DEEPSEEK_API_KEY}")
-    req.add_header("Content-Type", "application/json; charset=utf-8")
-    req.add_header("User-Agent", "figma-email-agent/1.0")
+        body = _json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        req = Request(
+            f"{DEEPSEEK_BASE_URL}/chat/completions",
+            data=body,
+            method="POST",
+        )
+        req.add_header("Authorization", f"Bearer {DEEPSEEK_API_KEY}")
+        req.add_header("Content-Type", "application/json; charset=utf-8")
+        req.add_header("User-Agent", "figma-email-agent/1.0")
 
-    try:
-        resp = urlopen(req, timeout=60)
+        resp = urlopen(req, timeout=90)
         data = _json.loads(resp.read().decode("utf-8"))
         choice = data["choices"][0]
-        message = choice.get("message", {})
-        content = message.get("content") or ""
-        if not content.strip():
-            finish_reason = choice.get("finish_reason", "unknown")
-            usage = data.get("usage", {})
-            raise ValueError(
-                "DeepSeek returned empty content — "
-                f"model={model}, finish_reason={finish_reason}, usage={usage}"
+        content = choice.get("message", {}).get("content") or ""
+        return content, {
+            "finish_reason": choice.get("finish_reason"),
+            "usage": data.get("usage", {}),
+        }
+
+    try:
+        content, meta = _request(max_tokens)
+        if content.strip():
+            return content
+
+        finish_reason = meta.get("finish_reason")
+        usage = meta.get("usage") or {}
+        reasoning_tokens = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens", 0)
+
+        if finish_reason == "length" and max_tokens < 8192:
+            print(
+                "[generate] DeepSeek empty content "
+                f"(finish=length, reasoning_tokens={reasoning_tokens}); retrying with higher max_tokens"
             )
-        return content
+            content, meta = _request(min(max_tokens * 2, 8192))
+            if content.strip():
+                return content
+            finish_reason = meta.get("finish_reason")
+            usage = meta.get("usage") or {}
+            reasoning_tokens = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens", 0)
+
+        raise ValueError(
+            "DeepSeek returned empty content — "
+            f"model={model}, finish_reason={finish_reason}, "
+            f"reasoning_tokens={reasoning_tokens}, max_tokens={max_tokens}"
+        )
     except HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")[:500]
         raise RuntimeError(f"DeepSeek API error ({e.code}): {body}") from e
@@ -382,7 +416,8 @@ def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
             system_prompt=system_prompt,
             user_message=user_message,
             model=DEEPSEEK_PRO_MODEL,
-            max_tokens=2048,
+            max_tokens=4096,
+            json_mode=True,
         )
     except ValueError:
         # Same key, lighter model — useful when pro exhausts tokens or rejects the prompt.
@@ -390,7 +425,8 @@ def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
             system_prompt=system_prompt,
             user_message=user_message,
             model=DEEPSEEK_FLASH_MODEL,
-            max_tokens=2048,
+            max_tokens=4096,
+            json_mode=True,
         )
     data = _extract_json(response_text)
     return _email_from_llm_data(brief, data)
@@ -420,6 +456,7 @@ Generate {count} subject line variations. Return only valid JSON."""
         user_message=user_message,
         model=DEEPSEEK_FLASH_MODEL,
         max_tokens=1024,
+        json_mode=True,
     )
     return _extract_json(response_text)
 

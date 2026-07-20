@@ -253,6 +253,7 @@ If the text mentions a specific Figma feature, product, or event, use your knowl
         user_message=f"Parse this campaign brief:\n\n{text}",
         model=DEEPSEEK_FLASH_MODEL,
         max_tokens=1024,
+        json_mode=True,
     )
 
     # Extract JSON from response
