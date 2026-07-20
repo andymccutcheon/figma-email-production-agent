@@ -105,9 +105,9 @@ Template routing: `feature_update` → Inter newsletter; everything else → Why
 
 | Variable | Required | Default |
 |----------|----------|---------|
-| `DEEPSEEK_API_KEY` | For live mode | — |
-| `DEEPSEEK_PRO_MODEL` | No | `deepseek-v4-pro` |
-| `DEEPSEEK_FLASH_MODEL` | No | `deepseek-v4-flash` |
+| `DEEPSEEK_API_KEY` | For live mode | — (one key works for all models) |
+| `DEEPSEEK_PRO_MODEL` | No | `deepseek-v4-pro` (model ID, not a separate key) |
+| `DEEPSEEK_FLASH_MODEL` | No | `deepseek-v4-flash` (model ID, not a separate key) |
 | `FLASK_SECRET_KEY` | Prod | auto-generated |
 | `ANTHROPIC_API_KEY` | No | Claude fallback |
 

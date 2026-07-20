@@ -18,7 +18,15 @@ import secrets
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from intake import EmailBrief
-from generate import generate_email, GeneratedEmail, get_active_provider, generate_subject_variations, DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_FLASH_MODEL
+from generate import (
+    generate_email,
+    GeneratedEmail,
+    get_active_provider,
+    generate_subject_variations,
+    DEEPSEEK_API_KEY,
+    DEEPSEEK_FLASH_MODEL,
+    _call_deepseek,
+)
 from brand_check import BrandChecker, BrandCheckReport
 from preview import render_preview
 
@@ -223,7 +231,6 @@ def parse_freeform_brief(text: str) -> dict:
     """Use DeepSeek Flash to parse freeform text into structured brief fields."""
     import json as _json
     import re as _re
-    from urllib.request import Request, urlopen
 
     system_prompt = """You are a campaign brief parser. Given freeform text describing an email campaign, extract the structured fields below. Infer reasonable defaults where information is missing. Return ONLY valid JSON.
 
@@ -241,28 +248,12 @@ Fields:
 
 If the text mentions a specific Figma feature, product, or event, use your knowledge of Figma to fill in reasonable CTA URLs."""
 
-    payload = _json.dumps({
-        "model": DEEPSEEK_FLASH_MODEL,
-        "max_tokens": 1024,
-        "temperature": 0.3,
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Parse this campaign brief:\n\n{text}"},
-        ],
-    }, ensure_ascii=False).encode("utf-8")
-
-    req = Request(
-        f"{DEEPSEEK_BASE_URL}/chat/completions",
-        data=payload,
-        method="POST",
+    response_text = _call_deepseek(
+        system_prompt=system_prompt,
+        user_message=f"Parse this campaign brief:\n\n{text}",
+        model=DEEPSEEK_FLASH_MODEL,
+        max_tokens=1024,
     )
-    req.add_header("Authorization", f"Bearer {DEEPSEEK_API_KEY}")
-    req.add_header("Content-Type", "application/json; charset=utf-8")
-    req.add_header("User-Agent", "figma-email-agent/1.0")
-
-    resp = urlopen(req, timeout=30)
-    data = _json.loads(resp.read().decode("utf-8"))
-    response_text = data["choices"][0]["message"]["content"]
 
     # Extract JSON from response
     json_match = _re.search(r'```(?:json)?\s*\n?(.*?)\n?```', response_text, _re.DOTALL)

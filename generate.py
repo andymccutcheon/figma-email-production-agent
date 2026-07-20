@@ -42,6 +42,7 @@ from email_html import (
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 # ── Provider configuration ─────────────────────────────────
+# One DEEPSEEK_API_KEY works for all models. PRO/FLASH env vars select model IDs only.
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_PRO_MODEL = os.environ.get("DEEPSEEK_PRO_MODEL", "deepseek-v4-pro")
 DEEPSEEK_FLASH_MODEL = os.environ.get("DEEPSEEK_FLASH_MODEL", "deepseek-v4-flash")
@@ -313,6 +314,9 @@ def _call_deepseek(system_prompt: str, user_message: str, model: str, max_tokens
         "model": model,
         "max_tokens": max_tokens,
         "temperature": 0.7,
+        # V4 defaults to thinking mode, which can consume tokens in reasoning_content
+        # and leave content empty for structured JSON tasks.
+        "thinking": {"type": "disabled"},
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
@@ -331,9 +335,16 @@ def _call_deepseek(system_prompt: str, user_message: str, model: str, max_tokens
     try:
         resp = urlopen(req, timeout=60)
         data = _json.loads(resp.read().decode("utf-8"))
-        content = data["choices"][0]["message"]["content"]
-        if not content or not content.strip():
-            raise ValueError("DeepSeek returned empty content — the model may not support this request or the prompt was rejected")
+        choice = data["choices"][0]
+        message = choice.get("message", {})
+        content = message.get("content") or ""
+        if not content.strip():
+            finish_reason = choice.get("finish_reason", "unknown")
+            usage = data.get("usage", {})
+            raise ValueError(
+                "DeepSeek returned empty content — "
+                f"model={model}, finish_reason={finish_reason}, usage={usage}"
+            )
         return content
     except HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")[:500]
@@ -362,12 +373,25 @@ def _extract_json(text: str) -> dict:
 def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
     """Generate email using DeepSeek Pro. LLM outputs copy slots; Python assembles HTML."""
     system_prompt = build_system_prompt(brief)
-    response_text = _call_deepseek(
-        system_prompt=system_prompt,
-        user_message="Generate the email based on the brief and system instructions. Return only valid JSON with copy slots.",
-        model=DEEPSEEK_PRO_MODEL,
-        max_tokens=2048,
+    user_message = (
+        "Generate the email based on the brief and system instructions. "
+        "Return only valid JSON with copy slots."
     )
+    try:
+        response_text = _call_deepseek(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            model=DEEPSEEK_PRO_MODEL,
+            max_tokens=2048,
+        )
+    except ValueError:
+        # Same key, lighter model — useful when pro exhausts tokens or rejects the prompt.
+        response_text = _call_deepseek(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            model=DEEPSEEK_FLASH_MODEL,
+            max_tokens=2048,
+        )
     data = _extract_json(response_text)
     return _email_from_llm_data(brief, data)
 

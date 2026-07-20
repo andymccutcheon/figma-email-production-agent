@@ -34,7 +34,7 @@
 **Location:** `generate.py` → `_call_deepseek()` line ~336
 
 **Likely causes:**
-- Model ID `deepseek-v4-pro` / `deepseek-v4-flash` may be invalid or not enabled on the API key
+- V4 thinking mode defaults to **enabled** — reasoning tokens land in `reasoning_content`, leaving `content` empty for JSON tasks (fixed in next deploy: `thinking: disabled`)
 - System prompt + context files may exceed model limits or trigger content filter
 - API returns `choices[0].message.content` as empty string with no error HTTP code
 
@@ -77,9 +77,9 @@ Brief (intake.py)
 | `brand_check.py` | Deterministic validation (Whyte/Inter, #5551FF, 640px) |
 
 **Env vars (Vercel):**
-- `DEEPSEEK_API_KEY` — required for live generation
-- `DEEPSEEK_PRO_MODEL` — default `deepseek-v4-pro`
-- `DEEPSEEK_FLASH_MODEL` — default `deepseek-v4-flash`
+- `DEEPSEEK_API_KEY` — required for live generation (one key works for all models)
+- `DEEPSEEK_PRO_MODEL` — optional model ID override, default `deepseek-v4-pro`
+- `DEEPSEEK_FLASH_MODEL` — optional model ID override, default `deepseek-v4-flash`
 - `FLASK_SECRET_KEY` — session auth
 
 ---
