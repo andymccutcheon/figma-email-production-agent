@@ -293,6 +293,19 @@ def deck():
     return app.send_static_file("deck/index.html")
 
 
+@app.route("/api/cached-demo")
+def api_cached_demo():
+    """Return a pre-generated, pre-validated demo result for instant loading.
+    The real LLM path is at /api/generate. This is for demo speed."""
+    import json as _json
+    cache_path = os.path.join(os.path.dirname(__file__), "static", "cached-demo.json")
+    try:
+        with open(cache_path) as f:
+            return _json.load(f)
+    except FileNotFoundError:
+        return {"status": "unavailable", "detail": "No cached demo found. Run generate first."}, 503
+
+
 @app.route("/api/generate", methods=["POST"])
 @require_auth_api
 def api_generate():

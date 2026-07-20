@@ -23,6 +23,7 @@ const samplePicker = document.querySelector('.brief-panel .sample-picker');
 // Sample briefs injected from server
 let samples = {};
 let currentMode = 'freeform';
+let isRegenerating = false;
 
 // Initialize: show freeform, hide structured form
 freeformInput.classList.remove('hidden');
@@ -198,12 +199,35 @@ async function submitStructured() {
   setTimeout(() => markStep(steps.validate, 'done'), 400);
   setTimeout(() => markStep(steps.generate, 'active'), 500);
 
+  // Check if this matches the default sample — use cached result for instant demo
+  const isDefaultSample = !isRegenerating
+    && data.campaign_name === 'Figma AI Launch'
+    && data.template_type === 'product_launch';
+
+  const endpoint = isDefaultSample ? '/api/cached-demo' : '/api/generate';
+  const fetchOptions = isDefaultSample
+    ? { method: 'GET' }
+    : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) };
+
   try {
-    const resp = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
+    const resp = await fetch(endpoint, fetchOptions);
+
+    // If cached demo is unavailable, fall back to real generation
+    if (resp.status === 503 && isDefaultSample) {
+      const fallbackResp = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await fallbackResp.json();
+      markStep(steps.generate, 'done');
+      setTimeout(() => { markStep(steps.brand, 'active'); }, 200);
+      setTimeout(() => { markStep(steps.brand, 'done'); }, 600);
+      setTimeout(() => { markStep(steps.preview, 'active'); }, 700);
+      setTimeout(() => { markStep(steps.preview, 'done'); }, 1000);
+      setTimeout(() => showResults(result), 1200);
+      return;
+    }
 
     const result = await resp.json();
 
@@ -272,6 +296,7 @@ function clearErrors() {
 
 function showResults(result) {
   hideLoading();
+  isRegenerating = false;  // Reset regeneration flag
   emptyState.classList.add('hidden');
   resultsContent.classList.remove('hidden');
 
@@ -326,6 +351,19 @@ function showResults(result) {
     modeNote.textContent = 'Live mode \u2014 using DeepSeek API for real generation.';
   } else if (provider === 'Claude') {
     modeNote.textContent = 'Live mode \u2014 using Claude API for real generation.';
+  } else if (provider === 'cached') {
+    modeNote.innerHTML = 'Instant preview \u2014 pre-generated result. <button id="regenerate-btn" class="regenerate-link">Regenerate with AI \u2192</button>';
+    // Wire up regenerate button after DOM update
+    setTimeout(() => {
+      const regenBtn = document.getElementById('regenerate-btn');
+      if (regenBtn) {
+        regenBtn.addEventListener('click', () => {
+          modeNote.textContent = 'Regenerating with AI\u2026';
+          isRegenerating = true;
+          generateBtn.click();
+        });
+      }
+    }, 100);
   } else {
     modeNote.textContent = 'Demo mode \u2014 no API key configured. Realistic simulated output.';
   }

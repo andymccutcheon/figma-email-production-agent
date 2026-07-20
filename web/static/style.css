@@ -1256,7 +1256,20 @@ body {
   width: 375px !important;
 }
 
-/* ── Old dual preview (removed, keep for reference) ── */
+.regenerate-link {
+  background: none;
+  border: none;
+  color: var(--brand-500);
+  cursor: pointer;
+  font-size: inherit;
+  font-family: inherit;
+  padding: 0;
+  text-decoration: underline;
+  margin-left: 8px;
+}
+.regenerate-link:hover {
+  color: var(--brand-600);
+}
 
 .code-block {
   padding: 20px;
