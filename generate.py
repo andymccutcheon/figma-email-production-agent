@@ -333,7 +333,8 @@ def _call_deepseek(
         if disable_thinking:
             # deepseek-v4-pro defaults to thinking mode, which can consume the entire
             # max_tokens budget in reasoning_content and return empty content.
-            payload["extra_body"] = {"thinking": {"type": "disabled"}}
+            # Must be top-level — extra_body is OpenAI SDK only and is ignored by raw HTTP.
+            payload["thinking"] = {"type": "disabled"}
 
         body = _json.dumps(payload, ensure_ascii=False).encode("utf-8")
         req = Request(
