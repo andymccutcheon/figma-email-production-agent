@@ -104,6 +104,21 @@ export default function App() {
             <p className="text-lg text-muted">Which problem to tackle first? It depends on what you optimize for.</p>
           </div>
           
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 text-center">
+            {[
+              { label: 'Hours', desc: 'Engineering + marketer hours saved per year', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { label: 'Revenue', desc: 'Revenue impact from faster campaigns, more volume', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+              { label: 'Reach', desc: '% of marketing org that directly benefits', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+              { label: 'Feasibility', desc: 'Technical + organizational difficulty to ship (inverted)', color: 'bg-violet-50 text-violet-700 border-violet-200' },
+              { label: 'Data Readiness', desc: 'Are guidelines, templates, and data sources ready?', color: 'bg-rose-50 text-rose-700 border-rose-200' },
+            ].map(d => (
+              <div key={d.label} className={cn("rounded-lg border p-3", d.color)}>
+                <div className="text-xs font-bold uppercase tracking-wider">{d.label}</div>
+                <div className="text-[10px] leading-tight mt-1 opacity-70">{d.desc}</div>
+              </div>
+            ))}
+          </div>
+          
           <div className="bg-surface rounded-xl border border-border overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-border bg-background/50">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Opportunity Scoring</h3>
@@ -224,16 +239,17 @@ export default function App() {
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Where I draw the line — and why</h3>
             <div className="bg-surface rounded-xl border border-border divide-y divide-border">
               {[
-                { step: 'Brief intake & validation', type: 'Deterministic (Python)', why: "Schema validation. Fail fast with a specific error if brief is malformed — don't ask a model to guess." },
-                { step: 'Email generation (copy + HTML)', type: 'LLM (DeepSeek)', why: "Copywriting requires semantic understanding of audience, tone, message. Subject lines need creativity. This IS judgment work. Falls back to Claude if DeepSeek is unavailable." },
-                { step: 'Brand compliance check', type: 'Deterministic (Python)', why: "Brand rules are rules. A regex checking for #7B61FF is more reliable than asking a model 'does this look on-brand?'" },
-                { step: 'Preview rendering', type: 'Deterministic (HTML)', why: "Display function. The human makes the judgment here — not the model." },
-                { step: 'Sync to Customer.io', type: 'Deterministic (API)', why: "API integration. The model never touches the API." }
+                { step: 'Brief intake & validation', file: 'intake.py', type: 'Deterministic (Python)', why: "Schema validation. Fail fast with a specific error if brief is malformed — don't ask a model to guess. Freeform text parsed by DeepSeek Flash into structured fields." },
+                { step: 'Email generation (copy + HTML)', file: 'generate.py', type: 'LLM (DeepSeek)', why: "LLM returns ~1KB of copy slots as JSON. Python assembles ~10KB of production HTML from 4 Figma reference templates. Model never touches HTML structure — only writes copy. Falls back to Claude if unavailable." },
+                { step: 'Brand compliance check', file: 'brand_check.py', type: 'Deterministic (Python)', why: "16 rules from 4 sources: brand guidelines, voice & tone, production email analysis, and accessibility standards. Regex + structural checks. Runs in milliseconds — no API call." },
+                { step: 'Preview rendering', file: 'preview.py', type: 'Deterministic (HTML)', why: "Renders email at 600px with brand report side-by-side. Desktop/mobile toggle. Human reviews and approves here — this is the gate." },
+                { step: 'Sync to Customer.io', file: 'sync.py', type: 'Deterministic (API)', why: "REST API call to Design Studio. Creates the email in the actual ESP where QA and sending happen. The model never touches the API." }
               ].map((item, i) => (
                 <div key={i} className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4 hover:bg-background/50 transition-colors">
                   <div className="sm:w-1/3">
                     <div className="font-medium text-foreground text-sm mb-1">{item.step}</div>
                     <div className={cn("text-xs inline-flex px-2 py-0.5 rounded-md font-medium", item.type.includes('LLM') ? 'bg-accent-purple/10 text-accent-purple' : 'bg-background border border-border text-muted')}>{item.type}</div>
+                    {item.file && <div className="text-[11px] text-muted mt-1 font-mono">{item.file}</div>}
                   </div>
                   <div className="sm:w-2/3 text-sm text-muted leading-relaxed">
                     {item.why}
@@ -373,6 +389,23 @@ export default function App() {
                     <div className="text-xs uppercase text-muted tracking-wider mb-1 font-semibold">What happens</div>
                     <div className="text-sm text-foreground">{item.result}</div>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Brand Rule Sources (16 rules, 0 API calls)</h3>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {[
+                { source: 'Figma brand guidelines', rules: 'Color palette (27 hex values), font stack (Whyte/Inter/Helvetica Neue), logo → figma.com link' },
+                { source: 'Figma voice & tone', rules: '8 forbidden phrases ("game-changing", "revolutionary"), exclamation mark limit (≤2), all-caps body detection' },
+                { source: 'Production email analysis', rules: 'CTA color validation (#5551FF lifecycle, #000000 newsletter), alt text on every image, unsubscribe required' },
+                { source: 'Email accessibility (EMC 2026)', rules: 'Heading hierarchy (single h1, no skips), table role="presentation", descriptive link text, title tag, lang attribute' },
+              ].map((s, i) => (
+                <div key={i} className="bg-surface border border-border rounded-lg p-4">
+                  <div className="text-xs font-semibold text-foreground mb-2">{s.source}</div>
+                  <div className="text-xs text-muted leading-relaxed">{s.rules}</div>
                 </div>
               ))}
             </div>
