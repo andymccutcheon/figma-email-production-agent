@@ -52,6 +52,7 @@ def require_auth_api(f):
     return decorated
 
 SAMPLE_BRIEFS = {
+    # ── Product Launch ──
     "product_launch": {
         "campaign_name": "Figma AI Launch",
         "audience": "Design leads and heads of design at companies with 50+ employees",
@@ -62,7 +63,28 @@ SAMPLE_BRIEFS = {
         "tone": "product_launch",
         "template_type": "product_launch",
         "additional_context": "This is our biggest launch of Q3. The AI features have been in beta for 3 months with overwhelmingly positive feedback.",
+        "freeform_text": "We're launching Figma AI — autocomplete your designs, generate variations from text prompts, and let AI handle the tedious layers. Target audience is design leads at companies with 50+ employees. Goal is 500 new AI feature activations in the first week. CTA: Try Figma AI → figma.com/ai. This has been in beta for 3 months with overwhelmingly positive feedback. Tone should be exciting and forward-looking.",
     },
+    "slides_launch": {
+        "campaign_name": "Figma Slides Launch",
+        "audience": "Product managers and design leads who already use Figma",
+        "goal": "2,000 new Slides projects created in the first week",
+        "key_message": "Turn any Figma frame into a slide with one click — real-time collaboration on decks, and presenter mode built in.",
+        "cta_text": "Try Figma Slides",
+        "cta_url": "https://figma.com/slides",
+        "tone": "product_launch",
+        "template_type": "product_launch",
+        "additional_context": "Launching next Tuesday. Beta with 200 teams, NPS 72. This is a major new product, not just a feature update.",
+        "freeform_text": ("We're launching Figma Slides next Tuesday — a new way to create and share presentations directly in Figma. "
+                         "Target audience is product managers and design leads who already use Figma for design work. "
+                         "The big hook: turn any Figma frame into a slide with one click, real-time collaboration on decks, and presenter mode built in. "
+                         "Goal is 2,000 new Slides projects created in the first week. "
+                         "CTA should be 'Try Figma Slides' linking to figma.com/slides. "
+                         "We've been in beta with 200 teams and NPS is 72. "
+                         "Tone should be exciting but professional — this is a major new product, not just a feature update."),
+    },
+
+    # ── Event ──
     "event": {
         "campaign_name": "Config 2026 Early Access",
         "audience": "Past Config attendees and Figma power users in US and Europe",
@@ -74,7 +96,32 @@ SAMPLE_BRIEFS = {
         "template_type": "event_invite",
         "event_date": "June 10-11, 2026",
         "additional_context": "Early bird pricing is $399 (saves $200). Keynote speaker lineup announced next week.",
+        "freeform_text": ("Config 2026 is June 10-11 in San Francisco at Moscone Center. "
+                         "We need an early access email for past attendees and Figma power users. "
+                         "Early bird pricing is $399 (saves $200) and we're capping early access at the first 3,000 registrations. "
+                         "Keynote lineup: Dylan Field, Sho Kuwamoto, and a surprise guest from the design world. "
+                         "This year's theme is 'Design at Scale' — workshops on design systems, AI-assisted design workflows, and cross-functional collaboration. "
+                         "CTA: 'Register now' → config.figma.com/2026. "
+                         "Make it feel exclusive since this goes out before the public announcement."),
     },
+    "workshop": {
+        "campaign_name": "Advanced Prototyping Workshop",
+        "audience": "Intermediate Figma users",
+        "goal": "Fill 500 seats for the live workshop",
+        "key_message": "Join the Figma education team for a 60-minute hands-on prototyping session. Limited to 500 seats.",
+        "cta_text": "Save your spot",
+        "cta_url": "https://figma.com/workshops/prototyping",
+        "tone": "educational",
+        "template_type": "event_invite",
+        "event_date": "Next Wednesday",
+        "additional_context": "Free virtual workshop. 60 minutes, hands-on.",
+        "freeform_text": ("Free virtual workshop next Wednesday: 'Advanced Prototyping in Figma.' "
+                         "60-minute hands-on session with the Figma education team. "
+                         "For intermediate Figma users. Limited to 500 seats. "
+                         "CTA: Save your spot → figma.com/workshops/prototyping."),
+    },
+
+    # ── Feature Update ──
     "feature_update": {
         "campaign_name": "Variables Everywhere",
         "audience": "All Figma users who have used components in the last 90 days",
@@ -85,7 +132,30 @@ SAMPLE_BRIEFS = {
         "tone": "feature_update",
         "template_type": "feature_update",
         "additional_context": "This was our #1 community request. The old system only supported color variables.",
+        "freeform_text": ("We just shipped a major update to Variables — they now support typography and spacing tokens and work across all component properties. "
+                         "This was the #1 community request. Target: 20% of component users try the new system within 30 days. "
+                         "CTA: 'Learn more' → help.figma.com/variables. "
+                         "Audience is all Figma users who've used components in the last 90 days."),
     },
+    "dev_mode": {
+        "campaign_name": "Dev Mode 2.0",
+        "audience": "Frontend engineers and engineering managers at companies using Figma",
+        "goal": "30% of Dev Mode users try the VS Code extension in the first month",
+        "key_message": "Designers can annotate specs directly on canvas, developers get automatic code snippets in 8 languages, and a new VS Code extension syncs design changes in real time.",
+        "cta_text": "Get the extension",
+        "cta_url": "https://figma.com/dev-mode",
+        "tone": "feature_update",
+        "template_type": "feature_update",
+        "additional_context": "The community has been asking for better designer-to-developer handoff for years — this is our answer. Free for all Figma plans.",
+        "freeform_text": ("We just shipped a major update to Dev Mode — designers can now annotate specs directly on the canvas, "
+                         "developers get automatic code snippets in 8 languages, and there's a new VS Code extension that syncs design changes in real time. "
+                         "Target audience is frontend engineers and engineering managers at companies using Figma. "
+                         "We want 30% of Dev Mode users to try the VS Code extension in the first month. "
+                         "The community has been asking for better designer-to-developer handoff for years — this is our answer. "
+                         "CTA: 'Get the extension' → figma.com/dev-mode. Include a mention that it's free for all Figma plans."),
+    },
+
+    # ── Educational / Newsletter ──
     "educational": {
         "campaign_name": "Design Systems at Scale",
         "audience": "Design system teams and design ops leaders",
@@ -96,6 +166,50 @@ SAMPLE_BRIEFS = {
         "tone": "educational",
         "template_type": "educational",
         "additional_context": "Based on interviews with 50+ design system teams. Includes real examples from Stripe, Spotify, and Airbnb.",
+        "freeform_text": ("Monthly newsletter for design system teams. "
+                         "This month's topic: how leading teams measure design system adoption and ROI. "
+                         "We interviewed 15 teams including Spotify, Airbnb, and GitHub. "
+                         "Key insights: teams tracking component reuse see 40% faster time-to-market, "
+                         "the most successful teams treat their design system as an internal product with a dedicated PM, "
+                         "and the #1 predictor of adoption isn't tooling — it's having a Slack channel where designers and engineers actually talk to each other. "
+                         "CTA: 'Read the full report' → figma.com/design-systems-report. "
+                         "Audience is design ops leaders and design system managers. "
+                         "Should feel like a thoughtful, research-backed newsletter — not marketing fluff."),
+    },
+
+    # ── Re-engagement ──
+    "reengagement": {
+        "campaign_name": "We Miss You",
+        "audience": "Users who haven't opened Figma in 90+ days at companies with active Figma seats",
+        "goal": "Re-activate 15% of dormant users",
+        "key_message": "A lot's happened in 3 months — AI features, Dev Mode, variables support, and 2x faster file loading. Your team is still actively using Figma.",
+        "cta_text": "Open Figma",
+        "cta_url": "https://figma.com",
+        "tone": "reengagement",
+        "template_type": "reengagement",
+        "additional_context": "Warm and welcoming tone — not guilt-trippy. Use FOMO angle: mention their team is still using Figma actively.",
+        "freeform_text": ("Win-back campaign for users who haven't opened Figma in 90+ days. "
+                         "We want to show them what they've missed — AI features, Dev Mode, variables support, "
+                         "and the new performance improvements (files load 2x faster now). "
+                         "Offer a personal touch: mention that their team is still actively using Figma (FOMO angle). "
+                         "CTA: 'Open Figma' → figma.com. "
+                         "Tone should be warm and welcoming, not guilt-trippy. "
+                         "Maybe lead with 'A lot's happened in 3 months' and show a quick visual timeline of shipped features. "
+                         "Audience is dormant users at companies with active Figma seats."),
+    },
+    "lapsed_30": {
+        "campaign_name": "Checking In",
+        "audience": "Users who haven't opened Figma in 30+ days",
+        "goal": "Re-engage lapsed users before they hit 90 days dormant",
+        "key_message": "We shipped some things you might like: faster file loading, new commenting threads, and dark mode for the desktop app.",
+        "cta_text": "Open Figma",
+        "cta_url": "https://figma.com",
+        "tone": "reengagement",
+        "template_type": "reengagement",
+        "additional_context": "Softer tone than the 90-day campaign. Keep it light and helpful.",
+        "freeform_text": ("Haven't seen you in a bit — just checking in. "
+                         "We shipped some things you might like: faster file loading, new commenting threads, and dark mode for the desktop app. "
+                         "CTA: Open Figma → figma.com. Keep it light and casual, not pushy."),
     },
 }
 

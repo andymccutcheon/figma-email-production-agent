@@ -26,13 +26,28 @@
     <div class="panel-header">
       <h2>Campaign Brief</h2>
       <div class="sample-picker">
-        <label for="sample-select">Quick load</label>
+        <label for="sample-select">Prompt templates</label>
         <select id="sample-select">
-          <option value="">Custom brief</option>
-          <option value="product_launch">Product Launch</option>
-          <option value="event">Event Invite</option>
-          <option value="feature_update">Feature Update</option>
-          <option value="educational">Educational</option>
+          <option value="">Custom prompt</option>
+          <optgroup label="Product Launch">
+            <option value="product_launch">Figma AI Launch</option>
+            <option value="slides_launch">Figma Slides</option>
+          </optgroup>
+          <optgroup label="Event">
+            <option value="event">Config 2026 Early Access</option>
+            <option value="workshop">Advanced Prototyping Workshop</option>
+          </optgroup>
+          <optgroup label="Feature Update">
+            <option value="feature_update">Variables Everywhere</option>
+            <option value="dev_mode">Dev Mode 2.0</option>
+          </optgroup>
+          <optgroup label="Educational">
+            <option value="educational">Design Systems at Scale</option>
+          </optgroup>
+          <optgroup label="Re-engagement">
+            <option value="reengagement">90-Day Win-Back</option>
+            <option value="lapsed_30">30-Day Check-In</option>
+          </optgroup>
         </select>
       </div>
     </div>

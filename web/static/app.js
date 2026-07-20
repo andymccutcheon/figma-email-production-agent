@@ -26,8 +26,6 @@ let currentMode = 'freeform';
 // Initialize: show freeform, hide structured form
 freeformInput.classList.remove('hidden');
 formFields.classList.add('hidden');
-sampleSelect.closest('.sample-picker').style.opacity = '0.4';
-sampleSelect.closest('.sample-picker').style.pointerEvents = 'none';
 
 // Load samples on page load
 fetch('/api/samples')
@@ -45,8 +43,8 @@ document.querySelectorAll('.mode-option').forEach(btn => {
     if (currentMode === 'freeform') {
       freeformInput.classList.remove('hidden');
       formFields.classList.add('hidden');
-      sampleSelect.closest('.sample-picker').style.opacity = '0.4';
-      sampleSelect.closest('.sample-picker').style.pointerEvents = 'none';
+      sampleSelect.closest('.sample-picker').style.opacity = '';
+      sampleSelect.closest('.sample-picker').style.pointerEvents = '';
     } else {
       freeformInput.classList.add('hidden');
       formFields.classList.remove('hidden');
@@ -59,18 +57,30 @@ document.querySelectorAll('.mode-option').forEach(btn => {
 // ── Sample Picker ──
 sampleSelect.addEventListener('change', () => {
   const key = sampleSelect.value;
-  if (!key || !samples[key]) return;
+  if (!key || !samples[key]) {
+    // Clear textarea when "Custom prompt" selected in freeform
+    if (currentMode === 'freeform') {
+      freeformTextarea.value = '';
+    }
+    return;
+  }
   const s = samples[key];
-  document.getElementById('campaign_name').value = s.campaign_name || '';
-  document.getElementById('audience').value = s.audience || '';
-  document.getElementById('goal').value = s.goal || '';
-  document.getElementById('key_message').value = s.key_message || '';
-  document.getElementById('cta_text').value = s.cta_text || '';
-  document.getElementById('cta_url').value = s.cta_url || '';
-  document.getElementById('tone').value = s.tone || 'product_launch';
-  document.getElementById('template_type').value = s.template_type || 'product_launch';
-  document.getElementById('event_date').value = s.event_date || '';
-  document.getElementById('additional_context').value = s.additional_context || '';
+
+  if (currentMode === 'freeform' && s.freeform_text) {
+    freeformTextarea.value = s.freeform_text;
+  } else {
+    // Structured mode — fill form fields
+    document.getElementById('campaign_name').value = s.campaign_name || '';
+    document.getElementById('audience').value = s.audience || '';
+    document.getElementById('goal').value = s.goal || '';
+    document.getElementById('key_message').value = s.key_message || '';
+    document.getElementById('cta_text').value = s.cta_text || '';
+    document.getElementById('cta_url').value = s.cta_url || '';
+    document.getElementById('tone').value = s.tone || 'product_launch';
+    document.getElementById('template_type').value = s.template_type || 'product_launch';
+    document.getElementById('event_date').value = s.event_date || '';
+    document.getElementById('additional_context').value = s.additional_context || '';
+  }
 });
 
 // ── New Campaign button ──
