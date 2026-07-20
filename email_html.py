@@ -13,7 +13,9 @@ from typing import Literal, Optional
 Lineage = Literal["whyte", "inter"]
 CtaStyle = Literal["purple", "outline", "black"]
 
-MAX_WIDTH = 650
+MAX_WIDTH = 640
+SIDE_PADDING = 40
+ROW_TEXT_GAP = 24
 WHYTE_STACK = "'Whyte', Helvetica, Arial, sans-serif"
 INTER_STACK = "Inter, Helvetica, Arial, sans-serif"
 PURPLE = "#5551FF"
@@ -40,6 +42,27 @@ PLACEHOLDER_ROW = "https://static.figma.com/uploads/ebda29ac2a7ddefa6f23c64e6c05
 
 def _font_stack(lineage: Lineage) -> str:
     return WHYTE_STACK if lineage == "whyte" else INTER_STACK
+
+
+def _container_attrs(extra_style: str = "") -> str:
+    style = f"max-width:{MAX_WIDTH}px;margin:0 auto;"
+    if extra_style:
+        style += extra_style
+    return (
+        f'role="presentation" width="{MAX_WIDTH}" align="center" '
+        f'style="{style}" cellpadding="0" cellspacing="0"'
+    )
+
+
+def content_section(inner: str, *, pad: Optional[str] = None, bg: str = "") -> str:
+    """Wrap block content in the 640px shell with consistent horizontal padding."""
+    if pad is None:
+        pad = f"0 {SIDE_PADDING}px"
+    bg_style = f"background:{bg};" if bg else ""
+    return f"""<table {_container_attrs(bg_style)}>
+<tr><td style="padding:{pad};">
+{inner}
+</td></tr></table>"""
 
 
 def _head_css(lineage: Lineage) -> str:
@@ -69,7 +92,7 @@ def _head_css(lineage: Lineage) -> str:
 {font_face}
 table, td {{ mso-table-lspace:0; mso-table-rspace:0; border-spacing:0; border:0; }}
 a {{ text-decoration:none; }}
-@media screen and (max-width:649px) {{
+@media screen and (max-width:{MAX_WIDTH - 1}px) {{
   .w-100p {{ width:100% !important; }}
   .tflex {{ display:block !important; width:100% !important; }}
 }}
@@ -94,8 +117,8 @@ def preview_text_div(text: str) -> str:
 
 
 def logo_block(figma_url: str = "https://figma.com") -> str:
-    return f"""<table role="presentation" width="{MAX_WIDTH}" align="center" style="max-width:{MAX_WIDTH}px;margin:0 auto;" cellpadding="0" cellspacing="0">
-<tr><td align="left" style="padding:25px 24px 25px 0;">
+    return f"""<table {_container_attrs()}>
+<tr><td align="left" style="padding:24px {SIDE_PADDING}px;">
   <a href="{figma_url}" style="text-decoration:none;">
     <img class="light-img" src="{LOGO_LIGHT}" width="110" alt="Figma" style="width:110px;max-width:110px;border:0;" />
   </a>
@@ -106,7 +129,7 @@ def logo_block(figma_url: str = "https://figma.com") -> str:
 
 
 def hero_image(url: str, alt: str, link: str = "#") -> str:
-    return f"""<table role="presentation" width="{MAX_WIDTH}" align="center" style="max-width:{MAX_WIDTH}px;margin:0 auto;" cellpadding="0" cellspacing="0">
+    return f"""<table {_container_attrs()}>
 <tr><td align="center" style="padding:0 0 24px;">
   <a href="{link}"><img src="{url}" width="{MAX_WIDTH}" alt="{alt}" style="width:{MAX_WIDTH}px;max-width:100%;border:0;display:block;" /></a>
 </td></tr></table>"""
@@ -116,21 +139,23 @@ def headline(text: str, lineage: Lineage = "whyte", size: str = "26px") -> str:
     stack = _font_stack(lineage)
     if lineage == "inter":
         size = "32px"
-    return (
+    inner = (
         f'<p style="font-size:{size};line-height:30px;font-family:{stack};color:{BLACK};'
-        f'font-weight:bold;text-align:center;margin:0;padding:20px 60px 30px;">{text}</p>'
+        f'font-weight:bold;text-align:center;margin:0;padding:20px 0 30px;">{text}</p>'
     )
+    return content_section(inner)
 
 
 def body_copy(text: str, lineage: Lineage = "whyte", align: str = "center") -> str:
     stack = _font_stack(lineage)
     lh = "28px" if lineage == "whyte" else "22px"
     fs = "20px" if lineage == "whyte" else "16px"
-    pad = "0 60px 20px" if lineage == "whyte" else "0 60px 24px"
-    return (
+    bottom = "20px" if lineage == "whyte" else "24px"
+    inner = (
         f'<p style="font-size:{fs};line-height:{lh};font-family:{stack};color:{BLACK};'
-        f'text-align:{align};margin:0;padding:{pad};">{text}</p>'
+        f'text-align:{align};margin:0;padding:0 0 {bottom};">{text}</p>'
     )
+    return content_section(inner)
 
 
 def inline_link(text: str, url: str) -> str:
@@ -160,13 +185,11 @@ def cta_button(text: str, url: str, style: CtaStyle = "purple", lineage: Lineage
         )
         link_color = WHITE
 
-    return f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" align="center" style="background-color:{WHITE};">
-<tr><td style="padding:30px 0 60px;" align="center">
-  <table role="presentation" cellpadding="0" cellspacing="0" align="center">
+    inner = f"""<table role="presentation" cellpadding="0" cellspacing="0" align="center">
   <tr><td align="center" style="{cell}">
     <a href="{url}" style="padding:12px 27px;color:{link_color};text-decoration:none;display:block;">{text}</a>
-  </td></tr></table>
-</td></tr></table>"""
+  </td></tr></table>"""
+    return content_section(inner, pad=f"30px {SIDE_PADDING}px 60px", bg=WHITE)
 
 
 def image_left_row(
@@ -179,12 +202,12 @@ def image_left_row(
     img_link: str = "#",
 ) -> str:
     arrow = link_text if "→" in link_text else f"{link_text} →"
-    return f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:0 10px 50px;">
+    inner = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr>
   <td valign="top" width="150" style="padding:0;">
     <a href="{img_link}"><img src="{img_url}" width="150" alt="{img_alt}" style="width:150px;max-width:150px;border:0;" /></a>
   </td>
-  <td valign="middle" style="padding:0 60px 0 40px;font-family:{WHYTE_STACK};">
+  <td valign="middle" style="padding:0 0 0 {ROW_TEXT_GAP}px;font-family:{WHYTE_STACK};">
     <p style="font-size:22px;line-height:28px;font-weight:bold;color:{BLACK};margin:0;">{title}</p>
     <p style="font-size:18px;line-height:22px;color:{BLACK};margin:10px 0 0;">{body}</p>
     <p style="font-size:18px;line-height:21px;margin:10px 0 0;">
@@ -192,6 +215,7 @@ def image_left_row(
     </p>
   </td>
 </tr></table>"""
+    return content_section(inner, pad=f"0 {SIDE_PADDING}px 50px")
 
 
 def bulleted_resources(items: list[tuple[str, str, str]]) -> str:
@@ -200,14 +224,14 @@ def bulleted_resources(items: list[tuple[str, str, str]]) -> str:
     for lead, link_text, url in items:
         rows += (
             f'<p style="font-size:20px;line-height:28px;font-family:{WHYTE_STACK};'
-            f'color:{BLACK};margin:0 0 12px;padding:0 60px;">'
+            f'color:{BLACK};margin:0 0 12px;padding:0;">'
             f'{lead} <a href="{url}" style="color:#699BF7;text-decoration:none;">{link_text}</a></p>'
         )
-    return rows
+    return content_section(rows)
 
 
 def icon_list_row(icon_url: str, icon_alt: str, title: str, body: str) -> str:
-    return f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:0 60px 24px;">
+    inner = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr>
   <td valign="top" width="80" style="padding-right:16px;">
     <img src="{icon_url}" width="80" alt="{icon_alt}" style="width:80px;border:0;" />
@@ -217,6 +241,7 @@ def icon_list_row(icon_url: str, icon_alt: str, title: str, body: str) -> str:
     <p class="fs-body" style="font-size:16px;line-height:22px;color:{BLACK};margin:8px 0 0;">{body}</p>
   </td>
 </tr></table>"""
+    return content_section(inner, pad=f"0 {SIDE_PADDING}px 24px")
 
 
 def two_column_grid(
@@ -231,20 +256,23 @@ def two_column_grid(
     right_body: str,
     right_link: str,
 ) -> str:
+    inner_width = MAX_WIDTH - (2 * SIDE_PADDING)
+    col_width = (inner_width - 16) // 2
     col = lambda img, alt, title, body, link: f"""
-    <td valign="top" width="289" class="tflex" style="padding:0 8px 24px;">
-      <img src="{img}" width="289" alt="{alt}" style="width:100%;max-width:289px;border-radius:8px;border:0;" />
+    <td valign="top" width="{col_width}" class="tflex" style="padding:0 8px 24px;">
+      <img src="{img}" width="{col_width}" alt="{alt}" style="width:100%;max-width:{col_width}px;border-radius:8px;border:0;" />
       <p style="font-size:22px;line-height:28px;font-weight:600;font-family:{INTER_STACK};color:{BLACK};margin:16px 0 8px;">{title}</p>
       <p style="font-size:16px;line-height:22px;font-family:{INTER_STACK};color:{BLACK};margin:0 0 12px;">{body}</p>
       <a href="{link}" style="color:{PURPLE};font-weight:bold;text-decoration:underline;font-size:16px;">Learn more →</a>
     </td>"""
-    return f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:0 52px;">
+    inner = f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
 <tr>{col(left_img, left_alt, left_title, left_body, left_link)}{col(right_img, right_alt, right_title, right_body, right_link)}</tr>
 </table>"""
+    return content_section(inner)
 
 
 def newsletter_card_open() -> str:
-    return f"""<table role="presentation" width="{MAX_WIDTH}" align="center" style="max-width:{MAX_WIDTH}px;margin:0 auto;background:{WHITE};border-radius:24px;" cellpadding="0" cellspacing="0">
+    return f"""<table {_container_attrs(f"background:{WHITE};border-radius:24px;")}>
 <tr><td>"""
 
 
@@ -263,8 +291,8 @@ def footer(lineage: Lineage = "whyte") -> str:
             f'<a href="{url}"><img src="{icon}" width="30" alt="{name}" style="width:30px;border:0;" /></a></td>'
         )
 
-    return f"""<table role="presentation" width="{MAX_WIDTH}" align="center" style="max-width:{MAX_WIDTH}px;margin:0 auto;border-top:1px solid #DEDEDE;background:{WHITE};" cellpadding="0" cellspacing="0">
-<tr><td style="padding:35px 10px 46px;" align="center">
+    return f"""<table {_container_attrs(f"border-top:1px solid #DEDEDE;background:{WHITE};")}>
+<tr><td style="padding:35px {SIDE_PADDING}px 46px;" align="center">
   <table role="presentation" width="410" align="center" style="max-width:410px;margin:0 auto;" cellpadding="0" cellspacing="0">
   <tr><td align="center" style="padding:15px 0 32px;font-size:14px;line-height:20px;font-family:{stack};color:{MUTED};">
     Figma is a design platform for teams who build products together. Born on the Web, Figma helps the entire product team create, test, and ship better designs, faster.

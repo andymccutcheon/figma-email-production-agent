@@ -41,7 +41,7 @@ figma-me/email-production-poc/
 
 | Rule | Value |
 |------|-------|
-| Container width | **650px** (not 600px) |
+| Container width | **640px** with **40px** side padding on content sections |
 | Lifecycle font | `'Whyte', Helvetica, Arial, sans-serif` |
 | Newsletter font | `Inter, Helvetica, Arial, sans-serif` |
 | Primary CTA | `#5551FF` purple fill (lifecycle) or `#000000` fill (newsletter) |
@@ -57,7 +57,7 @@ figma-me/email-production-poc/
 
 From `figma-examples/`:
 
-1. Logo + hero image (650px)
+1. Logo + hero image (640px)
 2. Headline + intro body (60px side padding)
 3. Purple or outline CTA button
 4. Image-left rows (150px img + title/body/link) — Whyte lifecycle

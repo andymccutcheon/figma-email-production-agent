@@ -74,7 +74,7 @@ Every email follows this structure:
 3. Hidden preview-text div (with zero-width spacers)
 4. Outer table (100% width, white background)
 5. Logo wordmark (110px, figma.com link, light/dark swap)
-6. [optional] Full-width hero image (650px)
+6. [optional] Full-width hero image (640px)
 7. Content sections (see template routing in email-templates.md)
 8. Production footer (brand blurb + social + address + unsubscribe)
 ```
@@ -171,7 +171,7 @@ Use hosted icons from `static.figma.com/uploads/`.
 
 ## HTML Engineering Rules
 
-1. Max width **650px** (not 600px)
+1. Max width **640px** with **40px horizontal padding** on all content sections (not 600px, not edge-to-edge icons)
 2. All layout tables: `role="presentation"`
 3. Inline styles on every element (head CSS is supplementary)
 4. Dark mode: `color-scheme` meta + `.light-img`/`.dark-img` classes
@@ -184,7 +184,7 @@ Use hosted icons from `static.figma.com/uploads/`.
 ## Quality Checklist
 
 - [ ] Correct lineage (Whyte vs Inter) for template_type
-- [ ] 650px container, logo wordmark at top
+- [ ] 640px container with 40px side padding, logo wordmark at top
 - [ ] Hidden preview-text div present
 - [ ] CTA uses `#5551FF` (lifecycle) or `#000000` (newsletter) — NOT `#0D99FF`
 - [ ] Production footer with social icons + unsubscribe
@@ -214,6 +214,6 @@ Use hosted icons from `static.figma.com/uploads/`.
 
 ## Version History
 - v4.1: LLM outputs copy slots only; Python assembles HTML via email_html.py (fixes token truncation in production).
-- v4.0: Production design system from figma-examples/ — Whyte/Inter lineages, 650px, #5551FF CTAs, section library, production footer.
+- v4.0: Production design system from figma-examples/ — Whyte/Inter lineages, 640px, #5551FF CTAs, section library, production footer.
 - v3.1: Switched from MJML to direct HTML output.
 - v3.0: Abstract design system (superseded by v4.0).

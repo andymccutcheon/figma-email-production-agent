@@ -7,8 +7,8 @@
 
 | Lineage | Font | Width | Used for |
 |---------|------|-------|----------|
-| **Whyte** (lifecycle) | `'Whyte', Helvetica, Arial, sans-serif` | 650px | product_launch, event_invite, reengagement, educational |
-| **Inter** (newsletter) | `Inter, Helvetica, Arial, sans-serif` | 650px | feature_update |
+| **Whyte** (lifecycle) | `'Whyte', Helvetica, Arial, sans-serif` | 640px | product_launch, event_invite, reengagement, educational |
+| **Inter** (newsletter) | `Inter, Helvetica, Arial, sans-serif` | 640px | feature_update |
 
 Route by `template_type`. Never mix fonts within one email.
 
@@ -20,7 +20,7 @@ Route by `template_type`. Never mix fonts within one email.
 2. `<head>` with charset, viewport, `color-scheme: light dark`, and `@font-face`
 3. Hidden preview-text div with zero-width spacers (prevents client clipping)
 4. Logo wordmark (110px) linked to figma.com — light/dark swap via `.light-img` / `.dark-img`
-5. Full-width hero image (650px) when the archetype uses one
+5. Full-width hero image (640px) when the archetype uses one
 6. Production footer: brand blurb + 5 social icons + address + unsubscribe
 7. All `<table role="presentation">` for layout; all `<img>` have `alt`
 
@@ -41,7 +41,7 @@ Logo dark:  https://static.figma.com/uploads/53280c3b3748be75104b3f237318ba3036b
 
 ### 2. Hero Image
 
-Full-width 650px image, linked to primary CTA URL. Alt describes the visual.
+Full-width 640px image, linked to primary CTA URL. Alt describes the visual.
 
 ### 3. Headline + Intro (Whyte)
 
@@ -155,7 +155,7 @@ White card with 24px border-radius wrapping hero + content. Used for feature_upd
 
 ## Engineering Patterns (from production)
 
-- Container: `max-width: 650px`, centered
+- Container: `max-width: 640px`, centered, **40px horizontal padding** on logo, rows, icons, text, CTAs, footer
 - All layout tables: `role="presentation"`
 - Dark mode: `color-scheme: light dark` meta + `.light-img`/`.dark-img` swap + `[data-ogsc]` for Android
 - Preview text: hidden div + `\u00a0` / zero-width spacers
