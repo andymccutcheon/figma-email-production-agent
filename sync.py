@@ -31,13 +31,13 @@ CUSTOMER_IO_ENV_ID = (
     or os.environ.get("CUSTOMER_IO_SITE_ID")
     or ""
 )
-# App API key (for transactional / design studio) — starts with "app_"
+# App API key (for transactional / design studio)
 CUSTOMER_IO_APP_KEY = (
     os.environ.get("CUSTOMERIO_APP_API_KEY")
     or os.environ.get("CUSTOMER_IO_APP_API_KEY")
     or ""
 )
-# Server/Track API key (for tracking / campaigns) — starts with "sa_" or other
+# Server/Track API key (for tracking / campaigns)
 CUSTOMER_IO_API_KEY = (
     os.environ.get("CUSTOMERIO_API_KEY")
     or os.environ.get("CUSTOMER_IO_API_KEY")
@@ -83,7 +83,7 @@ def sync_to_customer_io(email: GeneratedEmail, brief: EmailBrief) -> SyncResult:
                 detail=(
                     "API key doesn't have Design Studio access. "
                     "Set CUSTOMERIO_APP_API_KEY with an App API key "
-                    "(starts with 'app_'). Current key is a Track/Server key."
+                    "from Customer.io Settings → API Credentials."
                 ),
             )
 
