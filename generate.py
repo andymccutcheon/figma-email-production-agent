@@ -584,23 +584,21 @@ def _build_demo_mjml(brief: EmailBrief) -> str:
     """Build a complete MJML document for demo mode."""
     template_content = _get_template_mjml(brief)
 
-    return f"""<mjml>
+    return f"""<mjml lang="en">
   <mj-head>
     <mj-title>{brief.campaign_name}</mj-title>
-    <mj-font name="Figma Standard Text" href="https://fonts.cdnfonts.com/css/helvetica-neue-9" />
     <mj-attributes>
       <mj-all font-family="'Helvetica Neue', Arial, sans-serif" />
       <mj-text font-size="16px" color="#1E1E1E" line-height="1.6" />
       <mj-button background-color="#0D99FF" color="#FFFFFF" font-weight="600" border-radius="8px" padding="14px 32px" font-size="16px" />
     </mj-attributes>
     <mj-style inline="inline">
-      .view-in-browser {{ color: #666666; font-size: 12px; }}
       .footer-text {{ color: #666666; font-size: 12px; }}
     </mj-style>
   </mj-head>
   <mj-body background-color="#F5F5F5">
     <!-- View in browser -->
-    <mj-section padding="16px 24px 0">
+    <mj-section padding="12px 30px 0">
       <mj-column>
         <mj-text align="center" font-size="12px" color="#666666">
           <a href="https://figma.com" style="color:#666666;">View in browser</a>
@@ -609,7 +607,7 @@ def _build_demo_mjml(brief: EmailBrief) -> str:
     </mj-section>
 
     <!-- Logo -->
-    <mj-section padding="24px">
+    <mj-section padding="24px 30px 8px">
       <mj-column>
         <mj-image src="{LOGO_URL}" alt="Figma" width="40px" align="center" />
       </mj-column>
@@ -618,16 +616,16 @@ def _build_demo_mjml(brief: EmailBrief) -> str:
     {template_content}
 
     <!-- Footer -->
-    <mj-section padding="32px 24px" border-top="1px solid #F5F5F5">
+    <mj-section background-color="#FFFFFF" padding="30px 30px">
       <mj-column>
-        <mj-text align="center" font-size="12px" color="#666666" line-height="1.6">
+        <mj-text font-size="12px" color="#666666" align="center" padding="0 25px" padding-bottom="8px">
           You're receiving this because you're part of the Figma community.
         </mj-text>
-        <mj-text align="center" font-size="12px" color="#666666" line-height="1.6">
-          <a href="https://figma.com/unsubscribe" style="color:#666666;">Unsubscribe</a> |
-          <a href="https://figma.com/preferences" style="color:#666666;">Manage preferences</a>
+        <mj-text font-size="12px" color="#666666" align="center" padding="0 25px" padding-bottom="12px">
+          <a href="https://figma.com/unsubscribe" style="color:#666666;">Unsubscribe</a>
+          &middot; <a href="https://figma.com/preferences" style="color:#666666;">Email Preferences</a>
         </mj-text>
-        <mj-text align="center" font-size="12px" color="#666666" line-height="1.6">
+        <mj-text font-size="12px" color="#666666" align="center" padding="0 25px">
           Figma, Inc. 760 Market St, San Francisco, CA 94102
         </mj-text>
       </mj-column>
@@ -637,18 +635,18 @@ def _build_demo_mjml(brief: EmailBrief) -> str:
 
 
 def _get_template_mjml(brief: EmailBrief) -> str:
-    """Return MJML content for the specific template type."""
-    key_message = brief.key_message
+    """Return MJML content for the specific template type, following v3.0 design system."""
 
+    # ── Product Launch ──
     if brief.template_type == "product_launch":
         return f"""<!-- Hero -->
-    <mj-section padding="0 24px 24px">
+    <mj-section background-color="#FFFFFF" padding="40px 30px">
       <mj-column>
-        <mj-text align="center" font-size="28px" font-weight="700" color="#000000" padding="0 0 12px">
+        <mj-text font-size="28px" font-weight="700" color="#000000" align="center" padding="0 25px" padding-bottom="12px">
           {brief.campaign_name}
         </mj-text>
-        <mj-text align="center" font-size="16px" color="#666666" padding="0 0 24px" css-class="hero-description">
-          {key_message}
+        <mj-text font-size="16px" color="#1E1E1E" align="center" padding="0 25px" padding-bottom="24px" line-height="1.6">
+          {brief.key_message}
         </mj-text>
         <mj-button href="{brief.cta_url}" align="center">
           {brief.cta_text}
@@ -657,134 +655,226 @@ def _get_template_mjml(brief: EmailBrief) -> str:
     </mj-section>
 
     <!-- Features -->
-    <mj-section padding="24px" background-color="#F5F5F5">
+    <mj-section background-color="#FAFAFA" padding="30px 30px">
       <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 0 16px">
-          What's new
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
+          Designed for the way you work
         </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 0 4px">
-          Built for speed
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
+          AI-assisted design
         </mj-text>
-        <mj-text font-size="14px" color="#666666" padding="0 0 16px">
-          New rendering engine makes every interaction feel instant, even on complex files.
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
+          Generate UI from text prompts, autocomplete repetitive tasks, and let AI handle the tedious layers so you can focus on creative decisions.
         </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 0 4px">
-          Collaborate in real time
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
+          Real-time collaboration
         </mj-text>
-        <mj-text font-size="14px" color="#666666" padding="0 0 16px">
-          Multiplayer cursors now show what everyone's working on — no more stepping on toes.
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
+          Multiplayer cursors show what everyone's working on. Comments, audio calls, and version history are built in — no context switching.
         </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 0 4px">
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
           Design systems that scale
         </mj-text>
-        <mj-text font-size="14px" color="#666666" padding="0 0 8px">
-          Variables and modes make it easy to build once and deploy everywhere.
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" line-height="1.6">
+          Variables, modes, and component properties let you build once and deploy everywhere. Ship consistent experiences across every surface.
         </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- CTA Repeat -->
+    <mj-section background-color="#FFFFFF" padding="20px 30px">
+      <mj-column>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
       </mj-column>
     </mj-section>"""
 
+    # ── Event Invite ──
     elif brief.template_type == "event_invite":
         event_date = brief.event_date or "Coming soon"
         return f"""<!-- Event Hero -->
-    <mj-section padding="24px" background-color="#0D99FF">
+    <mj-section background-color="#0D99FF" padding="50px 30px">
       <mj-column>
-        <mj-text align="center" font-size="14px" color="rgba(255,255,255,0.8)" text-transform="uppercase" padding="0 0 8px">
+        <mj-text font-size="13px" font-weight="600" color="rgba(255,255,255,0.7)" align="center" text-transform="uppercase" padding="0 25px" padding-bottom="16px" letter-spacing="0.08em">
           You're invited
         </mj-text>
-        <mj-text align="center" font-size="28px" font-weight="700" color="#FFFFFF" padding="0 0 12px">
+        <mj-text font-size="28px" font-weight="700" color="#FFFFFF" align="center" padding="0 25px" padding-bottom="12px">
           {brief.campaign_name}
         </mj-text>
-        <mj-text align="center" font-size="18px" color="rgba(255,255,255,0.9)" padding="0 0 8px">
+        <mj-text font-size="18px" color="rgba(255,255,255,0.9)" align="center" padding="0 25px" padding-bottom="8px">
           {event_date}
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Why attend -->
-    <mj-section padding="24px">
+    <!-- Details -->
+    <mj-section background-color="#FFFFFF" padding="30px 30px">
       <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 0 16px">
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
           Why attend
         </mj-text>
-        <mj-text font-size="16px" color="#000000" padding="0 0 8px">
-          • Learn how leading teams ship design at scale
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="12px" line-height="1.6">
+          Learn how the best design teams ship at scale — from design systems that serve hundreds of designers to AI-assisted workflows that cut production time in half.
         </mj-text>
-        <mj-text font-size="16px" color="#000000" padding="0 0 8px">
-          • Get hands-on with new Figma features before anyone else
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="12px" line-height="1.6">
+          Get hands-on with new Figma features before anyone else. Our workshops are small, practical, and led by the people who built the tools.
         </mj-text>
-        <mj-text font-size="16px" color="#000000" padding="0 0 24px">
-          • Connect with designers and builders who share your challenges
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="24px" line-height="1.6">
+          Connect with designers and builders who share your challenges. The hallway conversations are as valuable as the keynotes.
         </mj-text>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- CTA Repeat -->
+    <mj-section background-color="#FFFFFF" padding="20px 30px">
+      <mj-column>
         <mj-button href="{brief.cta_url}" align="center">
           {brief.cta_text}
         </mj-button>
       </mj-column>
     </mj-section>"""
 
+    # ── Feature Update ──
     elif brief.template_type == "feature_update":
-        return f"""<!-- Feature Update -->
-    <mj-section padding="0 24px 24px">
+        return f"""<!-- Feature Update Hero -->
+    <mj-section background-color="#FFFFFF" padding="40px 30px">
       <mj-column>
-        <mj-text align="center" font-size="14px" color="#0D99FF" text-transform="uppercase" padding="0 0 8px">
+        <mj-text font-size="13px" font-weight="600" color="#0D99FF" align="center" text-transform="uppercase" padding="0 25px" padding-bottom="16px" letter-spacing="0.06em">
           New in Figma
         </mj-text>
-        <mj-text align="center" font-size="28px" font-weight="700" color="#000000" padding="0 0 12px">
+        <mj-text font-size="28px" font-weight="700" color="#000000" align="center" padding="0 25px" padding-bottom="12px">
           {brief.campaign_name}
         </mj-text>
-        <mj-text align="center" font-size="16px" color="#666666" padding="0 0 24px" css-class="update-description">
-          {key_message}
+        <mj-text font-size="16px" color="#1E1E1E" align="center" padding="0 25px" padding-bottom="24px" line-height="1.6">
+          {brief.key_message}
+        </mj-text>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- What Changed -->
+    <mj-section background-color="#FAFAFA" padding="30px 30px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
+          What changed
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
+          Built for speed
+        </mj-text>
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
+          We rebuilt the rendering engine from scratch. Files open in half the time, and every interaction feels instant — even on complex canvases with thousands of layers.
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
+          Smarter workflows
+        </mj-text>
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
+          New keyboard shortcuts, improved search, and better layer organization let you spend less time navigating and more time designing.
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
+          Plays well with others
+        </mj-text>
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" line-height="1.6">
+          Deeper integrations with the tools your team already uses. One-click exports, real-time embeds, and API access for custom workflows.
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- What changed -->
-    <mj-section padding="24px" background-color="#F5F5F5">
+    <!-- CTA Repeat -->
+    <mj-section background-color="#FFFFFF" padding="20px 30px">
       <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 0 16px">
-          What changed
-        </mj-text>
-        <mj-text font-size="16px" color="#000000" padding="0 0 4px">
-          Faster load times across all files
-        </mj-text>
-        <mj-text font-size="14px" color="#666666" padding="0 0 16px">
-          We rebuilt the rendering engine from scratch. Files open in half the time.
-        </mj-text>
-        <mj-text font-size="16px" color="#000000" padding="0 0 4px">
-          New keyboard shortcuts for power users
-        </mj-text>
-        <mj-text font-size="14px" color="#666666" padding="0 0 16px">
-          Navigate, select, and transform without touching your mouse. Full shortcut guide inside.
-        </mj-text>
         <mj-button href="{brief.cta_url}" align="center">
           {brief.cta_text}
         </mj-button>
       </mj-column>
     </mj-section>"""
 
-    else:  # educational
-        return f"""<!-- Newsletter Header -->
-    <mj-section padding="0 24px 24px">
+    # ── Re-engagement ──
+    elif brief.template_type == "reengagement":
+        return f"""<!-- Win-back Hero -->
+    <mj-section background-color="#FFFFFF" padding="40px 30px">
       <mj-column>
-        <mj-text align="center" font-size="28px" font-weight="700" color="#000000" padding="0 0 12px">
-          {brief.campaign_name}
+        <mj-text font-size="28px" font-weight="700" color="#000000" align="center" padding="0 25px" padding-bottom="12px">
+          A lot's happened
         </mj-text>
-        <mj-text align="center" font-size="16px" color="#666666" padding="0 0 24px" css-class="newsletter-description">
-          {key_message}
+        <mj-text font-size="16px" color="#1E1E1E" align="center" padding="0 25px" padding-bottom="24px" line-height="1.6">
+          {brief.key_message}
+        </mj-text>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- What you've missed -->
+    <mj-section background-color="#FAFAFA" padding="30px 30px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
+          What you've missed
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
+          AI features are live
+        </mj-text>
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
+          Generate UI from text, autocomplete designs, and let AI handle the repetitive work. Thousands of teams are already using it daily.
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
+          Dev Mode keeps getting better
+        </mj-text>
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
+          Annotated specs, automatic code snippets in 8 languages, and a VS Code extension that syncs design changes in real time.
+        </mj-text>
+        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
+          2x faster file loading
+        </mj-text>
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" line-height="1.6">
+          We rebuilt the rendering engine. Files open in half the time — even the big ones with thousands of layers.
         </mj-text>
       </mj-column>
     </mj-section>
 
-    <!-- Article -->
-    <mj-section padding="24px" background-color="#F5F5F5">
+    <!-- CTA Repeat -->
+    <mj-section background-color="#FFFFFF" padding="20px 30px">
       <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 0 12px">
-          What we're thinking about
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>"""
+
+    # ── Educational / Newsletter ──
+    else:
+        return f"""<!-- Newsletter Header -->
+    <mj-section background-color="#FFFFFF" padding="40px 30px">
+      <mj-column>
+        <mj-text font-size="28px" font-weight="700" color="#000000" align="center" padding="0 25px" padding-bottom="12px">
+          {brief.campaign_name}
         </mj-text>
-        <mj-text font-size="16px" color="#000000" padding="0 0 16px">
+        <mj-text font-size="16px" color="#1E1E1E" align="center" padding="0 25px" padding-bottom="24px" line-height="1.6">
+          {brief.key_message}
+        </mj-text>
+        <mj-button href="{brief.cta_url}" align="center">
+          {brief.cta_text}
+        </mj-button>
+      </mj-column>
+    </mj-section>
+
+    <!-- Article body -->
+    <mj-section background-color="#FAFAFA" padding="30px 30px">
+      <mj-column>
+        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
+          What we're learning
+        </mj-text>
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="16px" line-height="1.6">
           {brief.goal}
         </mj-text>
-        <mj-text font-size="16px" color="#000000" padding="0 0 24px">
-          The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation.
+        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="24px" line-height="1.6">
+          The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation. The tools are the enabler — the culture is what makes it stick.
         </mj-text>
         <mj-button href="{brief.cta_url}" align="center">
           {brief.cta_text}
