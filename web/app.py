@@ -287,6 +287,12 @@ def index():
     return render_template("index.html", samples=SAMPLE_BRIEFS)
 
 
+@app.route("/deck")
+def deck():
+    """Presentation deck — what I built for the email production problem."""
+    return app.send_static_file("deck/index.html")
+
+
 @app.route("/api/generate", methods=["POST"])
 @require_auth_api
 def api_generate():
