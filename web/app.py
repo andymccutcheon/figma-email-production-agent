@@ -290,7 +290,10 @@ def index():
 @app.route("/deck")
 def deck():
     """Presentation deck — what I built for the email production problem."""
-    return app.send_static_file("deck/index.html")
+    import os as _os
+    from flask import send_from_directory as _send_from_directory
+    deck_dir = _os.path.join(_os.path.dirname(__file__), "static", "deck")
+    return _send_from_directory(deck_dir, "index.html")
 
 
 @app.route("/api/cached-demo")
