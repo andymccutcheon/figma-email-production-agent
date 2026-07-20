@@ -53,5 +53,16 @@
   <p class="login-footer">Internal tool &middot; Authorized use only</p>
 </main>
 
+<script>
+// Auto-login if previously authenticated
+(function() {
+  var pw = localStorage.getItem('figma_agent_auth');
+  if (pw) {
+    document.getElementById('password').value = pw;
+    document.querySelector('form').submit();
+  }
+})();
+</script>
+
 </body>
 </html>
