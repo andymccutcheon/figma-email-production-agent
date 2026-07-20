@@ -27,6 +27,7 @@ app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
 app.config.update(
     SESSION_COOKIE_SAMESITE='None',
     SESSION_COOKIE_SECURE=True,
+    APPLICATION_ROOT=os.environ.get("APPLICATION_ROOT", ""),
 )
 
 ACCESS_PASSWORD = "nicolascage"
