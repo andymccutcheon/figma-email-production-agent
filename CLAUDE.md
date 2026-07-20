@@ -24,12 +24,19 @@ A browser-based email production agent for Figma marketing campaigns. Takes a st
 | `email_html.py` | v4.0 HTML builders — layout, sections, footer |
 | `generate.py` | DeepSeek/Claude/demo routing + demo templates |
 | `intake.py` | Brief parsing, validation, URL normalization |
-| `brand_check.py` | Deterministic brand compliance |
-| `web/app.py` | Flask routes + API |
-| `prompts/email-generation.md` | LLM system prompt (v4.0, copy slots) |
+| `brand_check.py` | 16 deterministic brand rules (brand + accessibility) |
+| `asset_pool.py` | Rotating image pool — hourly deterministic seed |
+| `sync.py` | Customer.io Design Studio sync via REST API |
+| `web/app.py` | Flask routes + API + `/api/cached-demo` endpoint |
+| `web/static/app.js` | Frontend — form handling, cached demo, device toggle |
+| `web/static/cached-demo.json` | Pre-generated result for "Figma AI Launch" sample |
+| `prompts/email-generation.md` | LLM system prompt (copy slots) |
 | `context/email-templates.md` | Section library + template routing |
 | `context/brand-guidelines.md` | Colors, fonts, required elements |
-| `figma-examples/` | **Canonical reference** — Untitled-1 through Untitled-4 |
+| `figma-examples/` | Canonical reference — Untitled-1 through Untitled-4 |
+| `docs/presentation/` | React/Vite presentation deck source |
+| `web/static/deck/` | Built presentation (served at `/deck` + `/static/deck/`) |
+| `TALKING-POINTS.md` | Companion speaker notes for presentation |
 
 ## Design system (v4.0)
 
@@ -64,3 +71,21 @@ DeepSeek returns empty content intermittently in production. See `.goose/handoff
 ## Handoff
 
 Session continuity: `.goose/handoff.md`
+
+## Presentation deck
+
+Source at `docs/presentation/` (React + Vite + Tailwind). Built via `npm run build` 
+and deployed to `web/static/deck/`. The base path in `vite.config.ts` MUST be set 
+to `/static/deck/` for the Flask build (not `/` or `/deck/`). Revert to `/` after building 
+or the dev server breaks.
+
+The deck is served at `/deck` on the Flask app and also embedded in an iframe at 
+`amccutcheon.com/figma-deck` via the portfolio site's React Router.
+
+## Customer.io sync
+
+Uses `CUSTOMERIO_APP_API_KEY` (not the track/server key). Sync failures are 
+silently suppressed in the frontend. The `sync.py` module supports:
+- `CUSTOMERIO_APP_API_KEY` → Design Studio REST API
+- `CUSTOMERIO_API_KEY` → fallback (usually doesn't have design studio access)
+- Neither → stub mode (returns success with "stub" provider)
