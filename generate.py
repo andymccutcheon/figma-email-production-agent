@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import tempfile
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass, asdict
 from typing import Optional
 
@@ -40,10 +41,11 @@ CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
 # ── MJML Compilation ───────────────────────────────────────
 
 def compile_mjml(mjml: str) -> str:
-    """Compile MJML XML to production-ready HTML via npx mjml.
+    """Compile MJML XML to production-ready HTML.
 
-    Uses --config.minify=true to stay under Gmail's 102KB clip limit
-    and --config.validationLevel=soft to handle minor LLM output quirks.
+    Tries local MJML binary first, then npx, then falls back to a basic
+    Python-based converter that produces renderable (but not Outlook-optimized)
+    HTML for preview purposes.
     """
     # Strip any markdown code fences the LLM may have wrapped the MJML in
     mjml = mjml.strip()
@@ -55,41 +57,255 @@ def compile_mjml(mjml: str) -> str:
         f.write(mjml)
         mjml_path = f.name
 
+    compiled = None
+
+    # Try 1: local node_modules/.bin/mjml
     try:
+        local_mjml = os.path.join(os.path.dirname(__file__) if '__file__' in dir() else '.', 'node_modules', '.bin', 'mjml')
         result = subprocess.run(
-            [
-                "npx", "mjml", mjml_path,
-                "--config.minify=true",
-                "--config.validationLevel=soft",
-            ],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            cwd=os.path.dirname(__file__),
+            [local_mjml, mjml_path, "--config.minify=true", "--config.validationLevel=soft"],
+            capture_output=True, text=True, timeout=30,
         )
+        if result.returncode == 0 and result.stdout.strip():
+            compiled = result.stdout
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
 
-        if result.returncode != 0:
-            # If MJML compilation fails, return the raw MJML as a fallback
-            err = result.stderr[:500]
-            print(f"[MJML] Compilation warning (using raw output): {err}")
-            # Try to extract any HTML from the output anyway
-            if result.stdout.strip():
-                return result.stdout
-            raise RuntimeError(f"MJML compilation failed: {err}")
-
-        return result.stdout
-
-    except FileNotFoundError:
-        print("[MJML] npx not found — MJML compilation skipped, returning raw MJML")
-        return mjml
-    except subprocess.TimeoutExpired:
-        print("[MJML] Compilation timed out — returning raw MJML")
-        return mjml
-    finally:
+    # Try 2: npx mjml (download on-the-fly)
+    if compiled is None:
         try:
-            os.unlink(mjml_path)
-        except OSError:
+            result = subprocess.run(
+                ["npx", "--yes", "mjml", mjml_path, "--config.minify=true", "--config.validationLevel=soft"],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                compiled = result.stdout
+            elif result.stdout.strip():
+                compiled = result.stdout  # Partial output
+        except (FileNotFoundError, subprocess.TimeoutExpired):
             pass
+
+    # Try 3: Python-based fallback (basic conversion, no Outlook VML)
+    if compiled is None:
+        print("[MJML] npx/mjml unavailable — using Python fallback converter")
+        compiled = _mjml_to_html_python(mjml)
+
+    try:
+        os.unlink(mjml_path)
+    except OSError:
+        pass
+
+    return compiled
+
+
+def _mjml_to_html_python(mjml: str) -> str:
+    """Basic Python-based MJML-to-HTML converter for preview fallback.
+
+    Does NOT produce Outlook VML or responsive media queries — it's meant
+    to produce renderable HTML for the browser preview when npx mjml is
+    unavailable (e.g. on Vercel serverless where npm packages can't be
+    downloaded at runtime).
+    """
+    # MJML uses namespaced tags, strip the namespace for easier parsing
+    cleaned = re.sub(r'xmlns="[^"]*"', '', mjml)
+    cleaned = re.sub(r'<mjml[^>]*>', '<mjml>', cleaned, count=1)
+    cleaned = re.sub(r'</mjml>', '</mjml>', cleaned, count=1)
+
+    try:
+        root = ET.fromstring(cleaned)
+    except ET.ParseError as e:
+        # If XML parsing fails, wrap raw MJML in a basic HTML doc
+        escaped = mjml.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Email Preview</title></head>
+<body style="font-family:Helvetica,Arial,sans-serif;padding:40px;background:#f5f5f5;color:#333;">
+<h3>⚠ MJML compilation unavailable</h3>
+<p>The email was generated as MJML but could not be compiled to HTML in this environment. Rendering raw source below.</p>
+<pre style="background:#fff;padding:20px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.5;">{escaped}</pre>
+</body></html>"""
+
+    # Extract head elements
+    title = ""
+    extra_styles = ""
+
+    for child in root:
+        if child.tag == 'mj-head':
+            for el in child:
+                if el.tag == 'mj-title':
+                    title = (el.text or '').strip()
+                elif el.tag == 'mj-style':
+                    extra_styles += (el.text or '')
+                # mj-attributes are applied per-element, handled during conversion
+        elif child.tag == 'mj-body':
+            body_content = _convert_mj_body(child)
+        else:
+            # Direct children of <mjml> that aren't <mj-head> or <mj-body>
+            pass
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title or 'Email'}</title>
+<style>
+  body {{ margin:0; padding:0; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }}
+  img {{ border:0; height:auto; line-height:100%; outline:none; text-decoration:none; max-width:100%; }}
+  {extra_styles}
+</style>
+</head>
+<body style="word-spacing:normal;background-color:#F5F5F5;">
+{body_content}
+</body>
+</html>"""
+
+
+def _convert_mj_body(body_el) -> str:
+    """Convert <mj-body> and its children to HTML table structure."""
+    bg = body_el.get('background-color', '#F5F5F5')
+
+    rows = []
+    for child in body_el:
+        if child.tag == 'mj-section':
+            rows.append(_convert_mj_section(child))
+        elif child.tag == 'mj-wrapper':
+            for sub in child:
+                if sub.tag == 'mj-section':
+                    rows.append(_convert_mj_section(sub))
+
+    inner = '\n'.join(rows)
+    return f'<div style="background-color:{bg};margin:0 auto;max-width:600px;">\n{inner}\n</div>'
+
+
+def _convert_mj_section(el) -> str:
+    """Convert <mj-section> to a table row."""
+    bg = el.get('background-color', '#FFFFFF')
+    padding = el.get('padding', '20px 0')
+
+    cols = []
+    for child in el:
+        if child.tag == 'mj-column':
+            cols.append(_convert_mj_column(child))
+
+    cols_html = '\n'.join(cols)
+    return f"""<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:{bg};width:100%;">
+<tr><td style="padding:{padding};">
+{cols_html}
+</td></tr></table>"""
+
+
+def _convert_mj_column(el) -> str:
+    """Convert <mj-column> to a table cell with content."""
+    width = el.get('width', '100%')
+    padding = el.get('padding', '0')
+
+    inner = []
+    for child in el:
+        converted = _convert_element(child)
+        if converted:
+            inner.append(converted)
+
+    inner_html = '\n'.join(inner)
+    return f"""<div style="display:inline-block;vertical-align:top;width:{width};padding:{padding};">
+{inner_html}
+</div>"""
+
+
+# Map MJML attribute names to inline CSS properties
+_STYLE_MAP = {
+    'color': 'color',
+    'font-size': 'font-size',
+    'font-weight': 'font-weight',
+    'font-family': 'font-family',
+    'line-height': 'line-height',
+    'text-align': 'text-align',
+    'align': 'text-align',
+    'background-color': 'background-color',
+    'padding': 'padding',
+    'padding-top': 'padding-top',
+    'padding-bottom': 'padding-bottom',
+    'padding-left': 'padding-left',
+    'padding-right': 'padding-right',
+    'border-radius': 'border-radius',
+    'width': 'width',
+    'height': 'height',
+    'text-decoration': 'text-decoration',
+}
+
+_COLOR_ATTRS = {'color', 'background-color'}
+
+
+def _mj_style(el, defaults=None) -> str:
+    """Build an inline style string from MJML element attributes."""
+    styles = dict(defaults or {})
+    for attr, val in el.attrib.items():
+        css_prop = _STYLE_MAP.get(attr)
+        if css_prop:
+            styles[css_prop] = val
+    return ';'.join(f'{k}:{v}' for k, v in styles.items())
+
+
+def _convert_element(el) -> str:
+    """Convert a single MJML element to its HTML equivalent."""
+    tag = el.tag
+
+    if tag == 'mj-text':
+        style = _mj_style(el, {'font-size': '16px', 'color': '#1E1E1E', 'line-height': '1.6'})
+        text = el.text or ''
+        # Preserve inner HTML (links, bold, etc.) by converting children
+        inner = text
+        for child in el:
+            inner += ET.tostring(child, encoding='unicode')
+        if el.tail:
+            inner += el.tail
+        return f'<div style="{style}">{inner.strip()}</div>'
+
+    elif tag == 'mj-button':
+        href = el.get('href', '#')
+        bg = el.get('background-color', '#0D99FF')
+        color = el.get('color', '#FFFFFF')
+        fs = el.get('font-size', '16px')
+        fw = el.get('font-weight', '600')
+        br = el.get('border-radius', '8px')
+        padding = el.get('padding', '14px 32px')
+        text = (el.text or '').strip()
+        align = el.get('align', 'center')
+        return f"""<div style="text-align:{align};padding:10px 0;">
+<a href="{href}" style="display:inline-block;background:{bg};color:{color};font-size:{fs};font-weight:{fw};border-radius:{br};padding:{padding};text-decoration:none;font-family:Helvetica,Arial,sans-serif;">{text}</a>
+</div>"""
+
+    elif tag == 'mj-image':
+        src = el.get('src', '')
+        alt = el.get('alt', '')
+        width = el.get('width', '100%')
+        align = el.get('align', 'center')
+        return f'<div style="text-align:{align};padding:10px 0;"><img src="{src}" alt="{alt}" style="width:{width};max-width:100%;height:auto;border:0;" /></div>'
+
+    elif tag == 'mj-divider':
+        border_color = el.get('border-color', '#E5E5E5')
+        border_width = el.get('border-width', '1px')
+        padding = el.get('padding', '10px 25px')
+        return f'<div style="padding:{padding};"><hr style="border:none;border-top:{border_width} solid {border_color};" /></div>'
+
+    elif tag == 'mj-spacer':
+        height = el.get('height', '20px')
+        return f'<div style="height:{height};"></div>'
+
+    elif tag == 'mj-social':
+        return '<div><!-- social icons placeholder --></div>'
+
+    elif tag == 'mj-navbar':
+        return '<div><!-- navbar placeholder --></div>'
+
+    elif tag == 'mj-raw':
+        return el.text or ''
+
+    # Catch-all: return text content
+    text = el.text or ''
+    for child in el:
+        text += ET.tostring(child, encoding='unicode')
+    return f'<div>{text.strip()}</div>'
 
 
 # ── Logo URL ───────────────────────────────────────────────
