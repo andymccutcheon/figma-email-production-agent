@@ -337,10 +337,10 @@ function showResults(result) {
       syncDiv.innerHTML = result.sync.preview_url
         ? `<span class="brand-passed">\u2713 Synced to Customer.io</span> <a href="${result.sync.preview_url}" target="_blank" style="font-size:13px;color:var(--brand-500);">Open in Design Studio \u2192</a>`
         : `<span class="brand-passed">\u2713 ${result.sync.detail}</span>`;
-    } else {
-      syncDiv.innerHTML = `<span class="brand-failed">\u2717 Sync failed: ${result.sync.detail}</span>`;
+      syncDiv.classList.remove('hidden');
     }
-    syncDiv.classList.remove('hidden');
+    // Sync failures are suppressed in the UI — sync is still experimental
+  }
   }
   if (window.innerWidth < 960) {
     document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth' });

@@ -1253,7 +1253,7 @@ body {
 }
 
 .single-preview.mobile iframe {
-  width: 375px;
+  width: 375px !important;
 }
 
 /* ── Old dual preview (removed, keep for reference) ── */
