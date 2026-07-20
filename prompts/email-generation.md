@@ -1,7 +1,7 @@
-# email-generation.md — v3.1 (Design System + HTML)
+# email-generation.md — v4.0 (Production Design System)
 
 ## Purpose
-Generate a complete, visually polished marketing email from a structured brief. Output is production-ready table-based HTML that renders in browser preview and email clients.
+Generate a complete, production-faithful Figma marketing email from a structured brief. Output matches real sends in `figma-examples/` — table-based HTML, no MJML, no compilation step.
 
 ## Output Format
 Return a JSON object:
@@ -15,202 +15,173 @@ Return a JSON object:
   "confidence_score": 1-5
 }
 ```
-The `html_body` field MUST contain a complete HTML document with inline styles and table-based layout. Do NOT use MJML.
+The `html_body` MUST be a complete HTML document. Do NOT use MJML.
 
 ---
 
-## Email Design System
+## Lineage Router
 
-### Typography Scale
-| Element | Size | Weight | Color | Notes |
-|---------|------|--------|-------|-------|
-| Hero headline | 28px | 700 | #000000 | One per email. The main message. |
-| Section heading | 20px | 600 | #000000 | Labels a content section. |
-| Sub-heading | 16px | 600 | #000000 | Labels a feature or smaller block. |
-| Body text | 16px | 400 | #1E1E1E | line-height: 1.6. Primary reading text. |
-| Caption / footer | 12px | 400 | #666666 | Legal, unsubscribe, address. line-height: 1.5. |
+Pick ONE lineage based on `template_type`:
 
-**Rule:** Maximum 3 font sizes per email. Hierarchy comes from weight and spacing, not size proliferation.
-
-### Spacing System
-| Context | Value | Where |
-|---------|-------|-------|
-| Hero section | `padding:50px 30px` | The opening section. Generous. |
-| Content section | `padding:30px 30px` | Feature lists, body copy sections. |
-| Tight section | `padding:20px 30px` | Footer, secondary CTAs. |
-| Text block inset | `padding:0 25px` | Left/right padding on text inside sections. |
-| Between paragraphs | `padding-bottom:12px` | Space between consecutive text blocks. |
-| Below heading | `padding-bottom:20px` | Space after section heading before body. |
-| Around button | `padding:10px 25px` | Breathing room around CTA. |
-
-**Rule:** White space is a design element. Crowded emails look amateur. Every section gets minimum 30px vertical padding. Every text block has 25px left/right inset. Never put text flush against a section edge.
-
-### Color System
-| Role | Color | Usage |
-|------|-------|-------|
-| Page background | #F5F5F5 | Entire email body background. |
-| Card / section bg | #FFFFFF | Content sections. |
-| Alternate section | #FAFAFA | Subtle variation for alternating rows. |
-| CTA button | bg #0D99FF, text #FFFFFF | Primary action only. |
-| Headings | #000000 | All heading text. |
-| Body text | #1E1E1E | All reading text. Near-black for readability. |
-| Muted text | #666666 | Captions, footer, view-in-browser. |
-
-**Rule:** Limited palette. No new colors. The email feels Figma: clean, modern, restrained.
-
-### Button Design
-Use an inline-styled `<a>` tag inside a centered div:
-```html
-<div style="text-align:center;padding:10px 25px;">
-  <a href="[URL]" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-weight:600;border-radius:8px;padding:14px 32px;font-size:16px;text-decoration:none;font-family:'Helvetica Neue',Arial,sans-serif;">
-    [Action text]
-  </a>
-</div>
-```
-- Button text: 2-4 words, action-oriented ("Try Figma AI", "Register now")
-- Always centered. Always Figma blue (#0D99FF).
-- At least one text block between the headline and the button.
-
-### Section Patterns
-
-**Hero** — opens every email:
-```html
-<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FFFFFF;width:100%;max-width:600px;margin:0 auto;">
-  <tr><td style="padding:50px 30px;">
-    <div style="text-align:center;padding-bottom:20px;">
-      <img src="LOGO_URL" alt="Figma" width="40" style="width:40px;max-width:100%;height:auto;border:0;" />
-    </div>
-    <div style="font-size:28px;font-weight:700;text-align:center;padding:0 25px 12px;color:#000000;font-family:'Helvetica Neue',Arial,sans-serif;">
-      [One-line main message]
-    </div>
-    <div style="font-size:16px;text-align:center;padding:0 25px 24px;color:#1E1E1E;line-height:1.6;font-family:'Helvetica Neue',Arial,sans-serif;">
-      [One to two sentences. Tight.]
-    </div>
-    <!-- CTA button -->
-  </td></tr>
-</table>
-```
-
-**Feature Section** — alternating backgrounds, 1-3 features:
-```html
-<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FAFAFA;width:100%;max-width:600px;margin:0 auto;">
-  <tr><td style="padding:30px 30px;">
-    <div style="font-size:20px;font-weight:600;padding:0 25px 20px;color:#000000;font-family:'Helvetica Neue',Arial,sans-serif;">[Section heading]</div>
-    <div style="font-size:16px;font-weight:600;padding:0 25px 6px;color:#000000;font-family:'Helvetica Neue',Arial,sans-serif;">[Feature name]</div>
-    <div style="font-size:16px;color:#1E1E1E;padding:0 25px 20px;line-height:1.6;font-family:'Helvetica Neue',Arial,sans-serif;">[One sentence describing feature and benefit.]</div>
-  </td></tr>
-</table>
-```
-
-**Social Proof** — optional, for credibility:
-```html
-<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FFFFFF;width:100%;max-width:600px;margin:0 auto;">
-  <tr><td style="padding:30px 30px;">
-    <div style="font-size:16px;font-style:italic;color:#666666;text-align:center;padding:0 25px;font-family:'Helvetica Neue',Arial,sans-serif;">
-      "[Short quote or stat — one line]"
-    </div>
-  </td></tr>
-</table>
-```
-
-**CTA Repeat** — always include one near the bottom:
-Use the same button markup as the hero section inside a white table section with `padding:20px 30px`.
-
-**Footer** — closes every email:
-```html
-<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FFFFFF;width:100%;max-width:600px;margin:0 auto;">
-  <tr><td style="padding:20px 30px;">
-    <div style="font-size:12px;color:#666666;text-align:center;padding:0 25px;font-family:'Helvetica Neue',Arial,sans-serif;">
-      <a href="*|UNSUBSCRIBE|*" style="color:#666666;text-decoration:none;">Unsubscribe</a> ·
-      <a href="*|PREFERENCES|*" style="color:#666666;text-decoration:none;">Email Preferences</a>
-    </div>
-    <div style="font-size:12px;color:#666666;text-align:center;padding:0 25px;font-family:'Helvetica Neue',Arial,sans-serif;">
-      Figma, Inc. 760 Market St, San Francisco, CA 94102
-    </div>
-  </td></tr>
-</table>
-```
+| template_type | Lineage | Font | Reference file |
+|---------------|---------|------|----------------|
+| product_launch | Whyte | `'Whyte', Helvetica, Arial, sans-serif` | Untitled-1 |
+| event_invite | Whyte | Whyte | Untitled-1 variant |
+| reengagement | Whyte | Whyte | Untitled-3 |
+| educational | Whyte | Whyte | Untitled-4 |
+| feature_update | Inter | `Inter, Helvetica, Arial, sans-serif` | Untitled-2 |
 
 ---
 
-## Email Structure Template
+## Document Skeleton
 
-Every email follows this skeleton. Sections marked [optional] are included only if the content supports them.
+Every email follows this structure:
 
 ```
-1. View-in-browser link (thin strip, 12px gray)
-2. Logo — 40px, centered
-3. HERO SECTION — headline + subhead + CTA button
-4. [optional] FEATURE SECTION — 1-3 features
-5. [optional] SOCIAL PROOF — quote or stat
-6. CTA REPEAT — same button as hero
-7. FOOTER — unsubscribe + preferences + address
+1. <!DOCTYPE html> + <html lang="en">
+2. <head> — charset, viewport, color-scheme dark, @font-face, responsive + dark mode CSS
+3. Hidden preview-text div (with zero-width spacers)
+4. Outer table (100% width, white background)
+5. Logo wordmark (110px, figma.com link, light/dark swap)
+6. [optional] Full-width hero image (650px)
+7. Content sections (see template routing in email-templates.md)
+8. Production footer (brand blurb + social + address + unsubscribe)
 ```
 
-**Maximum 5 sections total** (including hero and footer). If the content only needs 3 sections, use 3. Every section must earn its place.
+**Do NOT include:** view-in-browser link, email preferences link, 40px Customer.io logo.
 
 ---
 
-## Visual Hierarchy Rules
+## Typography
 
-1. **One story per email.** Pick the ONE thing that matters.
-2. **The hero headline is the most important 6-8 words in the email.**
-3. **Descending importance.** Most important at the top. Each subsequent section is less critical.
-4. **Button isolation.** The CTA button must be the only tappable element at its visual weight. Don't put links next to buttons.
-5. **Alternating backgrounds.** White → light gray → white → light gray helps the eye navigate.
-6. **Consistent inset.** All text in a section has the same left/right padding. Nothing hugs the edge.
+### Whyte lifecycle
+| Element | Size | Weight | Padding |
+|---------|------|--------|---------|
+| Headline | 26px | bold | 60px sides, centered |
+| Body | 20px / 28px lh | normal | 60px sides |
+| Row title | 22px | bold | left-aligned |
+| Row body | 18px / 22px lh | normal | left-aligned |
+| Footer blurb | 14px | normal | centered, `#a5a5a5` |
+| Footer legal | 12px | normal | `#B2B2B2` |
+
+### Inter newsletter
+| Element | Size | Weight | Notes |
+|---------|------|--------|-------|
+| H1 | 32px | 600 | -0.5px letter-spacing |
+| H2 | 22px | 600 | Section titles |
+| Body | 16px / 22px lh | 400 | 0.1px letter-spacing |
 
 ---
 
-## Quality Checklist
+## Color System
 
-Self-review before outputting JSON:
+| Role | Hex | Where |
+|------|-----|-------|
+| Purple CTA + inline links | `#5551FF` | Lifecycle primary buttons, "Learn more →" |
+| Black | `#000000` | Text, outline CTA border, newsletter CTA fill |
+| White | `#FFFFFF` | Backgrounds |
+| Resource links | `#699BF7` | Bulleted educational links |
+| Footer muted | `#a5a5a5`, `#B2B2B2` | Blurb, legal, unsubscribe |
 
-- [ ] Exactly ONE hero headline at 28px bold
-- [ ] Logo (40px, centered) at the top
-- [ ] View-in-browser link and unsubscribe link present
-- [ ] At least one clear CTA button (Figma blue, 14px/32px padding)
-- [ ] No more than 3 font sizes in the entire email
-- [ ] Every section has at least 30px vertical padding
-- [ ] All text blocks have 25px left/right padding
-- [ ] Nothing is #999999 on #FFFFFF (fails contrast)
-- [ ] Subject line under 50 characters
-- [ ] Preview text under 90 characters, complements subject
-- [ ] All `<img>` tags have `alt` attributes
-- [ ] Maximum 5 sections total
+**Never use `#0D99FF` for email CTAs** — production uses `#5551FF` (lifecycle) or `#000000` (newsletter).
+
+---
+
+## CTA Patterns
+
+**Purple fill** (lifecycle primary):
+```html
+<td style="background-color:#5551FF;border:5px solid #5551FF;border-radius:8px;font-family:'Whyte',Helvetica,Arial,sans-serif;font-size:20px;font-weight:bold;">
+  <a href="[URL]" style="padding:12px 27px;color:#ffffff;text-decoration:none;display:block;">Create a file</a>
+</td>
+```
+
+**Black outline** (secondary/closing):
+```html
+<td style="background-color:#ffffff;border:5px solid #000000;border-radius:8px;font-family:'Whyte',Helvetica,Arial,sans-serif;font-size:20px;font-weight:bold;">
+  <a href="[URL]" style="padding:12px 27px;color:#000000;text-decoration:none;display:block;">Go to Figma</a>
+</td>
+```
+
+**Black fill** (newsletter):
+```html
+<td class="btn primary" style="background:#000000;border-radius:8px;">
+  <a href="[URL]" style="padding:13px 30px;color:#FFFFFF;font-family:Inter,Helvetica,Arial,sans-serif;font-size:18px;display:block;">Register now →</a>
+</td>
+```
+
+Arrow links in rows: `<a style="color:#5551FF;font-weight:bold;text-decoration:none;">View the course →</a>`
+
+---
+
+## Section Patterns
+
+Use the section library in `email-templates.md`. Key blocks:
+
+1. **Image-left row** — 150px image + title/body/link (Whyte, ×3–4)
+2. **Bulleted resources** — linked lead-ins at `#699BF7` (educational)
+3. **Newsletter card** — 24px radius white shell (Inter)
+4. **Two-column grid** — 289px columns (Inter)
+5. **Icon list** — 80px icon + text (Inter)
+
+---
+
+## Footer (required)
+
+410px inner table:
+- Brand sentence: "Figma is a design platform for teams who build products together..."
+- 5 social icons (30px): Figma, Twitter, Instagram, YouTube, LinkedIn
+- Address: `Figma, Inc. · 760 Market St · San Francisco, CA 94102`
+- Unsubscribe: `<a href="*|UNSUBSCRIBE|*">Unsubscribe</a>`
+
+Use hosted icons from `static.figma.com/uploads/`.
 
 ---
 
 ## HTML Engineering Rules
 
-1. Return a complete `<!DOCTYPE html>` document with `<html lang="en">`.
-2. Use table-based sections (`<table role="presentation">`) for layout — max-width 600px, centered.
-3. All styles must be inline on elements (no external CSS files).
-4. Use styled `<a>` tags for CTAs — not raw button elements.
-5. Logo URL: `https://userimg-assets.customeriomail.com/images/client-env-226115/01KXY0PTW2FWKDYZ4377K8BM3G.png`
-6. Do NOT use MJML tags (`<mj-*>`). Output HTML only.
+1. Max width **650px** (not 600px)
+2. All layout tables: `role="presentation"`
+3. Inline styles on every element (head CSS is supplementary)
+4. Dark mode: `color-scheme` meta + `.light-img`/`.dark-img` classes
+5. Preview text: hidden div with `\u00a0` spacers after text
+6. Logo: 110px wordmark from `static.figma.com`, NOT Customer.io CDN
+7. Output HTML only — no MJML, no markdown fences in JSON
+
+---
+
+## Quality Checklist
+
+- [ ] Correct lineage (Whyte vs Inter) for template_type
+- [ ] 650px container, logo wordmark at top
+- [ ] Hidden preview-text div present
+- [ ] CTA uses `#5551FF` (lifecycle) or `#000000` (newsletter) — NOT `#0D99FF`
+- [ ] Production footer with social icons + unsubscribe
+- [ ] All images have `alt` attributes
+- [ ] All layout tables have `role="presentation"`
+- [ ] Subject line under 50 characters
+- [ ] Preview text under 90 characters, complements subject
+- [ ] No forbidden phrases (see brand guidelines)
+- [ ] Arrow CTAs where appropriate ("Learn more →")
+
+---
 
 ## Subject Line Rules
 - Under 50 characters. No all-caps. Max 1 emoji.
-- Action-oriented or curiosity-driven. Reflects brief's tone.
+- Warm lifecycle tone OK: "Welcome to Figma!", "A lot's happened since your last visit"
 
 ## Preview Text Rules
 - Under 90 characters. Complements subject — don't repeat it.
-- Gives a reason to open.
+- Matches hidden preview div content.
 
 ## Plain Text Rules
-- Clean, readable text version. Links written out in full.
-
-## Voice Rules (from voice_and_tone)
-- Clear over clever. No forbidden phrases (see brand guidelines).
-- Write like a smart colleague, not a press release.
+- Clean readable version. Links written out in full. Include unsubscribe.
 
 ## Confidence Score
-5 = output is clean, on-brand, follows all design system rules.
-1 = unsure. Be honest — low confidence is better than wrong.
+5 = matches production patterns in figma-examples/, all checklist items pass.
+1 = unsure. Be honest.
 
 ## Version History
-- v3.1: Switched from MJML to direct HTML output for reliable serverless deployment.
-- v3.0: Full email design system — typography scale, spacing system, color palette, section patterns, visual hierarchy rules, quality checklist.
-- v2.0: Switched to MJML output. Added accessibility and engineering rules.
-- v1.0: Initial prompt.
+- v4.0: Production design system from figma-examples/ — Whyte/Inter lineages, 650px, #5551FF CTAs, section library, production footer.
+- v3.1: Switched from MJML to direct HTML output.
+- v3.0: Abstract design system (superseded by v4.0).

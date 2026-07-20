@@ -52,32 +52,54 @@ Used for icon backgrounds, badges, section accents:
 
 ## Typography
 
-Figma uses a custom sans-serif typeface for its wordmark. For marketing emails, the fallback stack is:
+Production emails use two typefaces — never Helvetica Neue:
 
-| Element | Font Stack | Size | Weight |
-|————-|—————-|———|————|
-| Headline | 'Helvetica Neue', Arial, sans-serif | 28px | 700 |
-| Subheadline | 'Helvetica Neue', Arial, sans-serif | 20px | 600 |
-| Body | 'Helvetica Neue', Arial, sans-serif | 16px | 400 |
-| Caption | 'Helvetica Neue', Arial, sans-serif | 13px | 400 |
-| Footer | 'Helvetica Neue', Arial, sans-serif | 12px | 400 |
+| Lineage | Font Stack | Used for |
+|---------|------------|----------|
+| **Whyte** (lifecycle) | `'Whyte', Helvetica, Arial, sans-serif` | Onboarding, product launch, re-engagement, educational |
+| **Inter** (newsletter) | `Inter, Helvetica, Arial, sans-serif` | Feature updates, release notes |
 
-## CTAs
+### Whyte scale
 
-- Primary CTA background: `#0D99FF` (Figma Blue)
-- CTA text: `#FFFFFF`
-- Border radius: 8px
-- Padding: 14px 32px
-- Maximum one primary CTA per email
-- CTA text: action-oriented, 2-4 words
+| Element | Size | Weight |
+|---------|------|--------|
+| Headline | 26px | bold |
+| Body | 20px | normal |
+| Row title | 22px | bold |
+| Row body | 18px | normal |
+| Footer blurb | 14px | normal |
+| Footer legal | 12px | normal |
+
+### Inter scale
+
+| Element | Size | Weight |
+|---------|------|--------|
+| H1 | 32px | 600 |
+| H2 | 22px | 600 |
+| Body | 16px | 400 |
+
+## CTAs (v4.0 production)
+
+| Style | Background | Border | Text | When |
+|-------|------------|--------|------|------|
+| Purple fill | `#5551FF` | 5px `#5551FF` | white | Lifecycle primary (onboarding, launch) |
+| Black outline | white | 5px `#000000` | black | Secondary / closing (re-engagement) |
+| Black fill | `#000000` | 3px `#000000` | white | Newsletter primary |
+
+Inline row links: `#5551FF` bold with arrow (→). Educational resource links: `#699BF7`.
+
+**Do not use `#0D99FF` for email CTAs** — that is product UI blue, not email production blue.
 
 ## Required Elements (Every Email)
 
-1. Figma logo (top, linked to figma.com)
-2. Unsubscribe link (footer)
-3. Physical address (footer): Figma, Inc. 760 Market St, San Francisco, CA 94102
-4. View in browser link (top)
+1. Figma logo wordmark (110px, linked to figma.com) — from `static.figma.com`
+2. Hidden preview-text div with spacers
+3. Unsubscribe link (footer)
+4. Physical address (footer): Figma, Inc. · 760 Market St · San Francisco, CA 94102
 5. Alt text on all images
+6. Production footer: brand blurb + 5 social icons
+
+**Not required in production:** view-in-browser link, email preferences link.
 
 ## Forbidden
 

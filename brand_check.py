@@ -41,13 +41,20 @@ class BrandChecker:
 
     # Figma brand colors
     BRAND_COLORS = {
-        "#000000", "#1E1E1E", "#0D99FF", "#9747FF", "#FFFFFF", "#F5F5F5",
+        "#000000", "#1E1E1E", "#0D99FF", "#5551FF", "#699BF7", "#9747FF", "#FFFFFF", "#F5F5F5",
+        "#a5a5a5", "#B2B2B2", "#DEDEDE",
         "#00B6FF", "#24CB71", "#FF7237", "#FF3737", "#874FFF",
         "#E5F4FF", "#CFF7D3", "#F1E5FF", "#FFDFCC", "#FFE0FC", "#EBEBFF", "#E3ECF2",
     }
 
     NEGATIVE_COLORS = {"#FF3737", "#FF7237", "#F24822"}
-    CTA_COLOR = "#0D99FF"
+    PRODUCTION_CTA_COLORS = {"#5551FF", "#000000", "#FFFFFF"}
+    LEGACY_CTA_COLOR = "#0D99FF"
+
+    ALLOWED_FONTS = {
+        'whyte', 'inter', 'helvetica neue', 'helvetica', 'arial', 'sans-serif',
+        'figma standard text',
+    }
 
     FORBIDDEN_PHRASES = [
         "revolutionary", "game-changing", "disruptive",
@@ -126,9 +133,23 @@ class BrandChecker:
             self._add("critical", "Unsubscribe missing", "Every email must include an unsubscribe link", "footer")
 
     def _check_view_in_browser(self, html: str):
-        lower = html.lower()
-        if 'view' not in lower or ('browser' not in lower and 'web' not in lower):
-            self._add("warning", "View-in-browser missing", "Include a 'View in browser' link at top", "body")
+        """View-in-browser is optional in v4.0 production emails."""
+        pass
+
+    def _check_cta_color(self, html: str):
+        buttons = re.findall(
+            r'<(?:a|button|td)[^>]*?(?:background(?:-color)?\s*:\s*|bgcolor\s*=\s*["\']?)(#[0-9a-fA-F]{6})',
+            html, re.IGNORECASE
+        )
+        brand_upper = {c.upper() for c in self.BRAND_COLORS}
+        allowed = self.PRODUCTION_CTA_COLORS | {self.LEGACY_CTA_COLOR}
+        for color in buttons:
+            upper = color.upper()
+            if upper in {c.upper() for c in allowed}:
+                continue
+            if upper not in brand_upper:
+                self._add("warning", f"Non-standard CTA color: {color}",
+                          "Production CTAs use #5551FF (lifecycle) or #000000 (newsletter)", "cta")
 
     def _check_alt_text(self, html: str):
         img_tags = re.findall(r'<img[^>]*>', html, re.IGNORECASE)
@@ -136,17 +157,24 @@ class BrandChecker:
             if 'alt=' not in tag:
                 self._add("critical", f"Missing alt text on image {i+1}",
                           f"<img> tag without alt attribute: {tag[:80]}...", "image")
-            elif 'alt=""' not in tag and 'alt=\'\'' not in tag:
-                # Has alt text — good. Check if it's likely decorative but has non-empty alt
+            elif 'alt=""' not in tag and "alt=''" not in tag:
                 alt_match = re.search(r'alt=["\']([^"\']*)["\']', tag)
                 if alt_match:
                     alt_value = alt_match.group(1).strip()
-                    if not alt_value:
-                        # Explicitly empty — decorative image, OK
-                        pass
-                    elif len(alt_value) < 3:
+                    if alt_value and len(alt_value) < 3:
                         self._add("warning", f"Alt text too short on image {i+1}",
                                   f"Alt text '{alt_value}' is very short — describe the image's purpose", "image")
+
+    def _check_font_family(self, html: str):
+        fonts = re.findall(r'(?<!mso-generic-)font-family\s*:\s*([^;]+)', html, re.IGNORECASE)
+        for font_stack in fonts:
+            has_allowed = any(
+                f.strip().lower().replace('"', '').replace("'", '') in self.ALLOWED_FONTS
+                for f in font_stack.split(',')
+            )
+            if not has_allowed:
+                self._add("critical", f"Invalid font: {font_stack.strip()}",
+                          "Use Whyte, Inter, Helvetica Neue, Arial, or sans-serif", "body")
 
     def _check_forbidden_phrases(self, subject: str, html: str, plain: str):
         combined = (subject + ' ' + html + ' ' + plain).lower()
@@ -154,30 +182,6 @@ class BrandChecker:
             if phrase.lower() in combined:
                 self._add("warning", f"Forbidden phrase: '{phrase}'",
                           f"Remove '{phrase}' from copy", "body")
-
-    def _check_cta_color(self, html: str):
-        buttons = re.findall(
-            r'<(?:a|button|td)[^>]*?(?:background(?:-color)?\s*:\s*|bgcolor\s*=\s*["\']?)(#[0-9a-fA-F]{6})',
-            html, re.IGNORECASE
-        )
-        if buttons:
-            for color in buttons:
-                if color.upper() != self.CTA_COLOR.upper():
-                    self._add("warning", f"CTA color should be Figma Blue (#0D99FF)",
-                              f"Button uses {color}, expected {self.CTA_COLOR}", "cta")
-
-    def _check_font_family(self, html: str):
-        fonts = re.findall(r'font-family\s*:\s*([^;]+)', html, re.IGNORECASE)
-        for font_stack in fonts:
-            allowed = {'helvetica neue', 'helvetica', 'arial', 'sans-serif',
-                       'figma standard text'}
-            has_allowed = any(
-                f.strip().lower().replace('"', '').replace("'", '') in allowed
-                for f in font_stack.split(',')
-            )
-            if not has_allowed:
-                self._add("critical", f"Invalid font: {font_stack.strip()}",
-                          "Use Helvetica Neue, Arial, or sans-serif only", "body")
 
     def _check_color_usage(self, html: str):
         if '#F24822' in html.upper() or '#f24822' in html.lower():
@@ -206,7 +210,9 @@ class BrandChecker:
                           f"All-caps sequence: '{seq[:50]}...'", "body")
 
     def _check_exclamation_marks(self, subject: str, html: str):
-        combined = subject + ' ' + re.sub(r'<[^>]+>', ' ', html)
+        html_no_style = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+        body_text = re.sub(r'<[^>]+>', ' ', html_no_style)
+        combined = subject + ' ' + body_text
         count = combined.count('!')
         if count > 2:
             self._add("warning", f"Too many exclamation marks ({count})",

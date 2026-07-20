@@ -18,6 +18,24 @@ from typing import Optional
 from dotenv import load_dotenv
 
 from intake import EmailBrief
+from email_html import (
+    PLACEHOLDER_HERO,
+    PLACEHOLDER_ROW,
+    body_copy,
+    bulleted_resources,
+    cta_button,
+    footer,
+    headline,
+    hero_image,
+    icon_list_row,
+    image_left_row,
+    inline_link,
+    logo_block,
+    newsletter_card_close,
+    newsletter_card_open,
+    two_column_grid,
+    wrap_document,
+)
 
 # Load .env from project root
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
@@ -33,11 +51,6 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
 
 
-# ── HTML Email Building Blocks ───────────────────────────────
-
-FONT_STACK = "'Helvetica Neue', Arial, sans-serif"
-
-
 def _normalize_html_body(html: str) -> str:
     """Strip markdown fences from LLM HTML output."""
     html = html.strip()
@@ -46,82 +59,11 @@ def _normalize_html_body(html: str) -> str:
     return html.strip()
 
 
-def _html_section(bg: str, padding: str, inner: str) -> str:
-    return f"""<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:{bg};width:100%;max-width:600px;margin:0 auto;">
-<tr><td style="padding:{padding};">
-{inner}
-</td></tr></table>"""
-
-
-def _html_text(
-    content: str,
-    *,
-    font_size: str = "16px",
-    font_weight: str = "400",
-    color: str = "#1E1E1E",
-    align: str = "left",
-    padding: str = "0 25px",
-    padding_bottom: str = "12px",
-    line_height: str = "1.6",
-    letter_spacing: Optional[str] = None,
-    text_transform: Optional[str] = None,
-) -> str:
-    extra = ""
-    if letter_spacing:
-        extra += f"letter-spacing:{letter_spacing};"
-    if text_transform:
-        extra += f"text-transform:{text_transform};"
-    return (
-        f'<div style="font-family:{FONT_STACK};font-size:{font_size};font-weight:{font_weight};'
-        f'color:{color};text-align:{align};padding:{padding};padding-bottom:{padding_bottom};'
-        f'line-height:{line_height};{extra}">{content}</div>'
-    )
-
-
-def _html_button(text: str, url: str, align: str = "center") -> str:
-    return (
-        f'<div style="text-align:{align};padding:10px 25px;">'
-        f'<a href="{url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;'
-        f'font-family:{FONT_STACK};font-size:16px;font-weight:600;border-radius:8px;'
-        f'padding:14px 32px;text-decoration:none;">{text}</a></div>'
-    )
-
-
-def _html_footer() -> str:
-    return _html_section(
-        "#FFFFFF",
-        "30px 30px",
-        _html_text(
-            "You're receiving this because you're part of the Figma community.",
-            font_size="12px",
-            color="#666666",
-            align="center",
-            padding_bottom="8px",
-            line_height="1.5",
-        )
-        + _html_text(
-            '<a href="https://figma.com/unsubscribe" style="color:#666666;text-decoration:none;">Unsubscribe</a>'
-            ' · <a href="https://figma.com/preferences" style="color:#666666;text-decoration:none;">Email Preferences</a>',
-            font_size="12px",
-            color="#666666",
-            align="center",
-            padding_bottom="12px",
-            line_height="1.5",
-        )
-        + _html_text(
-            "Figma, Inc. 760 Market St, San Francisco, CA 94102",
-            font_size="12px",
-            color="#666666",
-            align="center",
-            padding_bottom="0",
-            line_height="1.5",
-        ),
-    )
-
-
-# ── Logo URL ───────────────────────────────────────────────
-
-LOGO_URL = "https://userimg-assets.customeriomail.com/images/client-env-226115/01KXY0PTW2FWKDYZ4377K8BM3G.png"
+def _lineage_for_template(template_type: str) -> str:
+    """Route template types to Whyte lifecycle vs Inter newsletter lineages."""
+    if template_type == "feature_update":
+        return "inter"
+    return "whyte"
 
 
 @dataclass
@@ -380,209 +322,168 @@ def _generate_demo(brief: EmailBrief) -> GeneratedEmail:
 
 
 def _build_demo_html(brief: EmailBrief) -> str:
-    """Build a complete HTML email document for demo mode."""
-    template_content = _get_template_html(brief)
-    logo_block = (
-        f'<div style="text-align:center;padding:10px 0;">'
-        f'<img src="{LOGO_URL}" alt="Figma" width="40" '
-        f'style="width:40px;max-width:100%;height:auto;border:0;" /></div>'
-    )
+    """Build a complete v4.0 HTML email for demo mode."""
+    lineage = _lineage_for_template(brief.template_type)
+    preview = _generate_preview_text(brief)
+    content = _get_template_html(brief)
+    return wrap_document(brief.campaign_name, preview, content, lineage=lineage)
 
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{brief.campaign_name}</title>
-<style>
-  body {{ margin:0; padding:0; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }}
-  img {{ border:0; height:auto; line-height:100%; outline:none; text-decoration:none; max-width:100%; }}
-</style>
-</head>
-<body style="word-spacing:normal;background-color:#F5F5F5;margin:0;padding:0;">
-<div style="background-color:#F5F5F5;margin:0 auto;max-width:600px;">
-  {_html_section("#F5F5F5", "12px 30px 0", _html_text('<a href="https://figma.com" style="color:#666666;text-decoration:none;">View in browser</a>', font_size="12px", color="#666666", align="center", padding_bottom="0"))}
-  {_html_section("#F5F5F5", "24px 30px 8px", logo_block)}
-  {template_content}
-  {_html_footer()}
-</div>
-</body>
-</html>"""
+
+def _demo_rows(brief: EmailBrief, rows: list[tuple[str, str, str, str, str]]) -> str:
+    """Build image-left rows from (title, body, link_text, link_url, img_alt) tuples."""
+    html = ""
+    for title, body, link_text, link_url, img_alt in rows:
+        html += image_left_row(
+            PLACEHOLDER_ROW, img_alt, title, body, link_text, link_url, brief.cta_url
+        )
+    return html
 
 
 def _get_template_html(brief: EmailBrief) -> str:
-    """Return HTML content for the specific template type, following v3.0 design system."""
+    """Return v4.0 HTML content matching figma-examples archetypes."""
+    url = brief.cta_url
 
-    # ── Product Launch ──
+    # ── Product Launch (Untitled-1: Whyte onboarding row layout) ──
     if brief.template_type == "product_launch":
+        intro = (
+            f"We're excited to share what's new. {inline_link('See it in Figma', url)} "
+            f"or explore the highlights below."
+        )
+        rows = _demo_rows(brief, [
+            (
+                "AI-assisted design",
+                "Generate UI from text prompts, autocomplete repetitive tasks, and let AI handle the tedious layers.",
+                "Learn more", url, "AI-assisted design in Figma",
+            ),
+            (
+                "Real-time collaboration",
+                "Multiplayer cursors, comments, and version history — no context switching required.",
+                "See how it works", url, "Real-time collaboration in Figma",
+            ),
+            (
+                "Design systems that scale",
+                "Variables, modes, and component properties let you build once and deploy everywhere.",
+                "Explore systems", url, "Design systems in Figma",
+            ),
+        ])
         return (
-            _html_section(
-                "#FFFFFF",
-                "40px 30px",
-                _html_text(brief.campaign_name, font_size="28px", font_weight="700", color="#000000", align="center", padding_bottom="12px")
-                + _html_text(brief.key_message, align="center", padding_bottom="24px")
-                + _html_button(brief.cta_text, brief.cta_url),
-            )
-            + _html_section(
-                "#FAFAFA",
-                "30px 30px",
-                _html_text("Designed for the way you work", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
-                + _html_text("AI-assisted design", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "Generate UI from text prompts, autocomplete repetitive tasks, and let AI handle the tedious layers so you can focus on creative decisions.",
-                    padding_bottom="20px",
-                )
-                + _html_text("Real-time collaboration", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "Multiplayer cursors show what everyone's working on. Comments, audio calls, and version history are built in — no context switching.",
-                    padding_bottom="20px",
-                )
-                + _html_text("Design systems that scale", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "Variables, modes, and component properties let you build once and deploy everywhere. Ship consistent experiences across every surface.",
-                    padding_bottom="0",
-                ),
-            )
-            + _html_section("#FFFFFF", "20px 30px", _html_button(brief.cta_text, brief.cta_url))
+            logo_block()
+            + hero_image(PLACEHOLDER_HERO, brief.campaign_name, url)
+            + headline(brief.campaign_name)
+            + body_copy(intro)
+            + cta_button(brief.cta_text, url, "purple")
+            + rows
+            + cta_button(brief.cta_text, url, "purple")
+            + footer("whyte")
         )
 
-    # ── Event Invite ──
+    # ── Event Invite (Whyte lifecycle + event hero) ──
     if brief.template_type == "event_invite":
         event_date = brief.event_date or "Coming soon"
         return (
-            _html_section(
-                "#0D99FF",
-                "50px 30px",
-                _html_text(
-                    "You're invited",
-                    font_size="13px",
-                    font_weight="600",
-                    color="rgba(255,255,255,0.7)",
-                    align="center",
-                    padding_bottom="16px",
-                    letter_spacing="0.08em",
-                    text_transform="uppercase",
-                )
-                + _html_text(brief.campaign_name, font_size="28px", font_weight="700", color="#FFFFFF", align="center", padding_bottom="12px")
-                + _html_text(event_date, font_size="18px", color="rgba(255,255,255,0.9)", align="center", padding_bottom="0"),
-            )
-            + _html_section(
-                "#FFFFFF",
-                "30px 30px",
-                _html_text("Why attend", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
-                + _html_text(
-                    "Learn how the best design teams ship at scale — from design systems that serve hundreds of designers to AI-assisted workflows that cut production time in half.",
-                    padding_bottom="12px",
-                )
-                + _html_text(
-                    "Get hands-on with new Figma features before anyone else. Our workshops are small, practical, and led by the people who built the tools.",
-                    padding_bottom="12px",
-                )
-                + _html_text(
-                    "Connect with designers and builders who share your challenges. The hallway conversations are as valuable as the keynotes.",
-                    padding_bottom="24px",
-                )
-                + _html_button(brief.cta_text, brief.cta_url),
-            )
-            + _html_section("#FFFFFF", "20px 30px", _html_button(brief.cta_text, brief.cta_url))
-        )
-
-    # ── Feature Update ──
-    if brief.template_type == "feature_update":
-        return (
-            _html_section(
-                "#FFFFFF",
-                "40px 30px",
-                _html_text(
-                    "New in Figma",
-                    font_size="13px",
-                    font_weight="600",
-                    color="#0D99FF",
-                    align="center",
-                    padding_bottom="16px",
-                    letter_spacing="0.06em",
-                    text_transform="uppercase",
-                )
-                + _html_text(brief.campaign_name, font_size="28px", font_weight="700", color="#000000", align="center", padding_bottom="12px")
-                + _html_text(brief.key_message, align="center", padding_bottom="24px")
-                + _html_button(brief.cta_text, brief.cta_url),
-            )
-            + _html_section(
-                "#FAFAFA",
-                "30px 30px",
-                _html_text("What changed", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
-                + _html_text("Built for speed", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "We rebuilt the rendering engine from scratch. Files open in half the time, and every interaction feels instant — even on complex canvases with thousands of layers.",
-                    padding_bottom="20px",
-                )
-                + _html_text("Smarter workflows", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "New keyboard shortcuts, improved search, and better layer organization let you spend less time navigating and more time designing.",
-                    padding_bottom="20px",
-                )
-                + _html_text("Plays well with others", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "Deeper integrations with the tools your team already uses. One-click exports, real-time embeds, and API access for custom workflows.",
-                    padding_bottom="0",
+            logo_block()
+            + hero_image(PLACEHOLDER_HERO, brief.campaign_name, url)
+            + headline(brief.campaign_name)
+            + body_copy(f"{event_date} · {brief.key_message}")
+            + cta_button(brief.cta_text, url, "purple")
+            + _demo_rows(brief, [
+                (
+                    "Learn from the best",
+                    "See how top design teams ship at scale — from design systems to AI-assisted workflows.",
+                    "View agenda", url, "Event session preview",
                 ),
-            )
-            + _html_section("#FFFFFF", "20px 30px", _html_button(brief.cta_text, brief.cta_url))
+                (
+                    "Hands-on workshops",
+                    "Small, practical sessions led by the people who built the tools.",
+                    "Register now", url, "Workshop preview",
+                ),
+                (
+                    "Connect with peers",
+                    "The hallway conversations are as valuable as the keynotes.",
+                    "Join the community", url, "Community at Config",
+                ),
+            ])
+            + cta_button(brief.cta_text, url, "purple")
+            + footer("whyte")
         )
 
-    # ── Re-engagement ──
+    # ── Feature Update (Untitled-2: Inter newsletter card) ──
+    if brief.template_type == "feature_update":
+        card_hero = "https://static.figma.com/uploads/09d331398f2b57bee77b7339209ec2cd4190d6bb"
+        return (
+            logo_block()
+            + newsletter_card_open()
+            + hero_image(card_hero, "Release Notes", url)
+            + headline(brief.campaign_name, "inter")
+            + body_copy(brief.key_message, "inter", "left")
+            + two_column_grid(
+                "https://static.figma.com/uploads/7cbabd510cbe2f41dc9ca3a027f058d08ea71223",
+                "Feature highlight one",
+                "Built for speed",
+                "Files open in half the time — even complex canvases with thousands of layers.",
+                url,
+                PLACEHOLDER_ROW,
+                "Feature highlight two",
+                "Smarter workflows",
+                "New shortcuts, improved search, and better layer organization.",
+                url,
+            )
+            + icon_list_row(
+                PLACEHOLDER_ROW,
+                "Integration icon",
+                "And a whole lot more",
+                "Deeper integrations with the tools your team already uses.",
+            )
+            + cta_button(brief.cta_text, url, "black", "inter")
+            + newsletter_card_close()
+            + footer("inter")
+        )
+
+    # ── Re-engagement (Untitled-3: Whyte + outline CTA) ──
     if brief.template_type == "reengagement":
         return (
-            _html_section(
-                "#FFFFFF",
-                "40px 30px",
-                _html_text("A lot's happened", font_size="28px", font_weight="700", color="#000000", align="center", padding_bottom="12px")
-                + _html_text(brief.key_message, align="center", padding_bottom="24px")
-                + _html_button(brief.cta_text, brief.cta_url),
-            )
-            + _html_section(
-                "#FAFAFA",
-                "30px 30px",
-                _html_text("What you've missed", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
-                + _html_text("AI features are live", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "Generate UI from text, autocomplete designs, and let AI handle the repetitive work. Thousands of teams are already using it daily.",
-                    padding_bottom="20px",
-                )
-                + _html_text("Dev Mode keeps getting better", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "Annotated specs, automatic code snippets in 8 languages, and a VS Code extension that syncs design changes in real time.",
-                    padding_bottom="20px",
-                )
-                + _html_text("2x faster file loading", font_weight="600", color="#000000", padding_bottom="6px")
-                + _html_text(
-                    "We rebuilt the rendering engine. Files open in half the time — even the big ones with thousands of layers.",
-                    padding_bottom="0",
+            logo_block()
+            + hero_image(PLACEHOLDER_HERO, "Go to Figma", url)
+            + headline("A lot's happened")
+            + body_copy(brief.key_message)
+            + _demo_rows(brief, [
+                (
+                    "AI features are live",
+                    "Generate UI from text, autocomplete designs, and let AI handle repetitive work.",
+                    "Try AI features", url, "Figma AI features",
                 ),
-            )
-            + _html_section("#FFFFFF", "20px 30px", _html_button(brief.cta_text, brief.cta_url))
+                (
+                    "Dev Mode keeps getting better",
+                    "Annotated specs, code snippets in 8 languages, and a VS Code extension.",
+                    "Open Dev Mode", url, "Dev Mode in Figma",
+                ),
+                (
+                    "2x faster file loading",
+                    "We rebuilt the rendering engine. Files open in half the time.",
+                    "See what's new", url, "Faster file loading",
+                ),
+            ])
+            + cta_button(brief.cta_text or "Go to Figma", url, "outline")
+            + footer("whyte")
         )
 
-    # ── Educational / Newsletter ──
+    # ── Educational (Untitled-4: bulleted resources + outline CTA) ──
     return (
-        _html_section(
-            "#FFFFFF",
-            "40px 30px",
-            _html_text(brief.campaign_name, font_size="28px", font_weight="700", color="#000000", align="center", padding_bottom="12px")
-            + _html_text(brief.key_message, align="center", padding_bottom="24px")
-            + _html_button(brief.cta_text, brief.cta_url),
+        logo_block()
+        + hero_image(PLACEHOLDER_HERO, brief.campaign_name, url)
+        + headline(brief.campaign_name)
+        + body_copy(brief.key_message)
+        + bulleted_resources([
+            ("Get started with the basics:", "Learn how", url),
+            ("Explore templates:", "Browse the gallery", url),
+            ("Join the community:", "Find your people", url),
+        ])
+        + body_copy(
+            "That's all for now :) We'll be back with more tips soon.",
+            align="left",
         )
-        + _html_section(
-            "#FAFAFA",
-            "30px 30px",
-            _html_text("What we're learning", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
-            + _html_text(brief.goal, padding_bottom="16px")
-            + _html_text(
-                "The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation. The tools are the enabler — the culture is what makes it stick.",
-                padding_bottom="24px",
-            )
-            + _html_button(brief.cta_text, brief.cta_url),
-        )
+        + cta_button(brief.cta_text or "Go to Figma", url, "outline")
+        + footer("whyte")
     )
 
 
