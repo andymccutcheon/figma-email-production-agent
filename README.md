@@ -1,87 +1,127 @@
-# Email Production Agent — Cortex Plan
+# Figma Email Production Agent
 
-## Repo Structure
+Generate production-faithful Figma marketing HTML emails from structured briefs. LLM writes copy; Python assembles table-based HTML matching real sends in `figma-examples/`.
 
-```
-email-production/
-├── prompts/              # LLM prompts — versioned, documented, testable
-│   ├── email-generation.md       v1.0 — Main email generation prompt
-│   ├── brand-compliance.md       v1.0 — Brand compliance review prompt
-│   └── subject-line.md           v1.0 — Subject line variations prompt
-├── skills/               # Reusable skill modules (factored out for cross-workflow reuse)
-│   ├── email-builder/            # Composition: brief → assembled email
-│   │   ├── skill.md              # What this skill does, when to use it
-│   │   └── prompt.md             # The prompt (imported by workflows)
-│   └── brand-validator/          # Validation: email → compliance report
-│       ├── skill.md
-│       └── prompt.md
-├── context/              # AI-readable knowledge base (the "cortex")
-│   ├── brand-guidelines.md       # Figma brand rules (colors, fonts, CTAs, required elements)
-│   ├── voice-and-tone.md         # Figma voice attributes and writing mechanics
-│   └── email-templates.md        # Template catalog with structure definitions
-├── evals/                # Evaluation framework
-│   ├── test-cases.json           # Structured test cases (happy path + edge cases)
-│   └── quality-rubric.md         # What "good" looks like — subjective criteria
-├── core/                 # Deterministic pipeline code
-│   ├── orchestrator.py           # Pipeline coordinator
-│   ├── intake.py                 # Brief parsing + validation
-│   ├── generate.py               # LLM generation wrapper
-│   ├── brand_check.py            # Deterministic brand validation
-│   ├── preview.py                # Human review preview page
-│   └── sync.py                   # Customer.io integration (stubbed)
-├── tests/                # Automated tests
-│   ├── test_pipeline.py          # Unit tests for each module
-│   └── sample-briefs/            # Test fixtures
-│       ├── brief-01.md           # Product launch
-│       ├── brief-02.md           # Event invite
-│       ├── brief-03.md           # Feature update
-│       └── brief-bad.md          # Malformed (edge case)
-├── output/               # Generated previews (gitignored)
-├── ARCHITECTURE.md               # System design document
-└── README.md                     # This file
+**Live demo:** https://figma-email-production-agent.vercel.app  
+**Repo:** https://github.com/andymccutcheon/figma-email-production-agent
+
+---
+
+## Quick start
+
+```bash
+# Clone
+git clone https://github.com/andymccutcheon/figma-email-production-agent.git
+cd figma-email-production-agent
+
+# Env
+cp .env.example .env   # add DEEPSEEK_API_KEY
+
+# Test
+python tests/test_pipeline.py
+
+# Local dev
+python web/app.py      # http://localhost:5000
 ```
 
-## Versioning Strategy
+Deploy: push to `main` → Vercel auto-builds.
 
-Every prompt, skill, and context file is versioned independently. Changes follow this process:
+---
 
-1. **Propose:** Create a branch. Update the file. Increment the version in the file header.
-2. **Eval:** Run the eval suite against the new prompt. Compare quality scores against baseline.
-3. **Review:** PR with before/after eval results. At least one other person reviews prompt changes.
-4. **Merge:** If quality holds or improves, merge. If quality regresses, iterate.
-5. **Log:** Changelog in the file header documents what changed and why.
+## How it works
 
-### Prompt Changelog Format (in each prompt file)
 ```
-## Version History
-- v1.2: Added FigJam-specific template. Adjusted tone for educational emails (Andrew, 2026-07-15)
-- v1.1: Tightened subject line character limit from 60 to 50. Added emoji constraint. (Kyle, 2026-06-20)
-- v1.0: Initial prompt. Covers all email types. (Andy, 2026-06-01)
+Brief → intake.py (validate)
+      → generate.py (DeepSeek copy slots OR demo templates)
+      → email_html.py (assemble HTML)
+      → brand_check.py
+      → preview
 ```
 
-## What Gets Factored Out (Reusability)
+- **No MJML** — HTML is built directly (Vercel Python has no Node)
+- **Copy slots pattern** — LLM returns ~1KB JSON; Python builds ~10KB HTML (avoids token truncation)
+- **v4.0 design system** — derived from 4 real Figma production emails in `figma-examples/`
 
-From this email production workflow, these components become reusable for other workflows:
+---
 
-| Component | Reusable As | Next Consumer |
-|-----------|-------------|---------------|
-| `brand_check.py` | `brand-validator` skill | ABM landing pages, ad copy, social posts |
-| `context/brand-guidelines.md` | Shared context file | ALL content generation workflows |
-| `context/voice-and-tone.md` | Shared context file | ALL content generation workflows |
-| `intake.py` validation pattern | Structural pattern | Any brief/request intake workflow |
-| `preview.py` review gate | UX pattern | Any human-in-the-loop workflow |
+## Repo structure
 
-The rule: if a second workflow needs the same capability, factor it out. If only this workflow uses it, keep it local. The threshold for factoring is "does someone else need this in the next 3 months?"
+```
+├── email_html.py           # v4.0 HTML builders (layout source of truth)
+├── generate.py             # LLM routing + demo templates
+├── intake.py               # Brief parsing + URL normalization
+├── brand_check.py          # Brand compliance validation
+├── preview.py              # HTML preview renderer
+├── figma-examples/         # Canonical production reference emails
+├── context/
+│   ├── email-templates.md  # Section library + routing
+│   ├── brand-guidelines.md
+│   └── voice-and-tone.md
+├── prompts/
+│   ├── email-generation.md # v4.0 LLM prompt (copy slots)
+│   ├── brand-compliance.md
+│   └── subject-line.md
+├── tests/test_pipeline.py  # 13 automated tests
+├── web/                    # Flask app (Vercel entry point)
+│   ├── app.py
+│   ├── static/
+│   └── templates/
+├── docs/                   # Study guide, test prompts
+├── ARCHITECTURE.md         # System design
+├── CLAUDE.md               # Agent instructions
+└── .goose/handoff.md       # Session handoff notes
+```
 
-## How Another Marketer Reuses This
+---
 
-A marketer building a new workflow (e.g., ABM landing pages) would:
+## Design tokens
 
-1. Fork `email-production/` or start from the template
-2. Import shared context: `context/brand-guidelines.md`, `context/voice-and-tone.md`
-3. Import shared skills: `skills/brand-validator/` for compliance checking
-4. Build new prompts: `prompts/landing-page-generation.md` for their specific output
-5. Reuse the eval framework pattern: `evals/test-cases.json` with landing page test cases
-6. Submit a PR if their new prompts/skills are broadly useful
+| Token | Value |
+|-------|-------|
+| Container | 640px |
+| Side padding | 40px |
+| Lifecycle font | Whyte |
+| Newsletter font | Inter |
+| Lifecycle CTA | `#5551FF` |
+| Newsletter CTA | `#000000` |
 
-They don't rebuild brand validation. They don't re-define the voice. They don't re-invent the eval pattern. They build ONLY what's unique to their workflow.
+Template routing: `feature_update` → Inter newsletter; everything else → Whyte lifecycle.
+
+---
+
+## Template archetypes
+
+| template_type | Reference | Patterns |
+|---------------|-----------|----------|
+| product_launch | Untitled-1 | Purple CTA, 3× image-left rows |
+| event_invite | Untitled-1 variant | Same lifecycle layout |
+| feature_update | Untitled-2 | Inter card, 2-col grid, icon list |
+| reengagement | Untitled-3 | Outline CTA, image rows |
+| educational | Untitled-4 | Bulleted links, outline CTA |
+
+---
+
+## Environment variables
+
+| Variable | Required | Default |
+|----------|----------|---------|
+| `DEEPSEEK_API_KEY` | For live mode | — |
+| `DEEPSEEK_PRO_MODEL` | No | `deepseek-v4-pro` |
+| `DEEPSEEK_FLASH_MODEL` | No | `deepseek-v4-flash` |
+| `FLASK_SECRET_KEY` | Prod | auto-generated |
+| `ANTHROPIC_API_KEY` | No | Claude fallback |
+
+---
+
+## Known issues
+
+See `.goose/handoff.md` for current blockers. As of 2026-07-19:
+
+- DeepSeek may return empty content in production → silent fallback to demo mode
+- UI shows "DeepSeek" even when demo fallback was used
+
+---
+
+## Agent skill
+
+Use `/figma-email-production` in Claude Code. Skill lives in `.claude/skills/figma-email-production/SKILL.md`.
