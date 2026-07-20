@@ -12,6 +12,19 @@ from dataclasses import dataclass, field, asdict
 from typing import Optional
 
 
+def normalize_url(url: str) -> str:
+    """Ensure a URL has a scheme. Bare domains get https:// prepended."""
+    url = (url or "").strip()
+    if not url:
+        return url
+    if re.match(r"^https?://", url, re.IGNORECASE):
+        return url
+    # help.figma.com/variables, figma.com/ai, config.figma.com/2026, etc.
+    if re.match(r"^[\w.-]+\.\w+(/.*)?$", url):
+        return f"https://{url}"
+    return url
+
+
 @dataclass
 class EmailBrief:
     campaign_name: str
@@ -31,6 +44,11 @@ class EmailBrief:
     event_date: Optional[str] = None
     event_time: Optional[str] = None
     target_segment: Optional[str] = None
+
+    def __post_init__(self) -> None:
+        self.cta_url = normalize_url(self.cta_url)
+        if self.hero_image_url:
+            self.hero_image_url = normalize_url(self.hero_image_url)
 
     def validate(self) -> list[str]:
         """Run all validations. Returns list of error messages (empty = valid)."""
@@ -57,8 +75,8 @@ class EmailBrief:
 
         if not self.cta_url:
             errors.append("cta_url is required")
-        elif not re.match(r'^https?://', self.cta_url):
-            errors.append(f"cta_url must start with http:// or https://, got: '{self.cta_url}'")
+        elif not re.match(r"^https?://[\w.-]+\.\w+", self.cta_url, re.IGNORECASE):
+            errors.append(f"cta_url must be a valid URL, got: '{self.cta_url}'")
 
         # Valid tone
         valid_tones = {"product_launch", "event", "educational", "feature_update", "reengagement"}

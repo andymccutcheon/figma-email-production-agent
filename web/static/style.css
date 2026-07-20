@@ -241,10 +241,13 @@ body {
   padding: 20px 24px 16px;
   border-bottom: 1px solid var(--border-light);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: stretch;
   gap: 12px;
+}
+
+.brief-panel .panel-header {
+  gap: 14px;
 }
 
 .panel-header h2 {
@@ -260,22 +263,25 @@ body {
 
 .sample-picker {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   font-size: 13px;
+  width: 100%;
 }
 
 .sample-picker label {
   color: var(--text-secondary);
-  font-weight: 500;
-  white-space: nowrap;
+  font-weight: 600;
   font-size: 12px;
+  letter-spacing: 0.01em;
 }
 
 .sample-picker select {
   appearance: none;
   -webkit-appearance: none;
-  padding: 6px 32px 6px 12px;
+  width: 100%;
+  padding: 8px 32px 8px 12px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-sm);
   font-size: 13px;

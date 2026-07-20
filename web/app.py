@@ -63,7 +63,7 @@ SAMPLE_BRIEFS = {
         "tone": "product_launch",
         "template_type": "product_launch",
         "additional_context": "This is our biggest launch of Q3. The AI features have been in beta for 3 months with overwhelmingly positive feedback.",
-        "freeform_text": "We're launching Figma AI — autocomplete your designs, generate variations from text prompts, and let AI handle the tedious layers. Target audience is design leads at companies with 50+ employees. Goal is 500 new AI feature activations in the first week. CTA: Try Figma AI → figma.com/ai. This has been in beta for 3 months with overwhelmingly positive feedback. Tone should be exciting and forward-looking.",
+        "freeform_text": "We're launching Figma AI — autocomplete your designs, generate variations from text prompts, and let AI handle the tedious layers. Target audience is design leads at companies with 50+ employees. Goal is 500 new AI feature activations in the first week. CTA: Try Figma AI → https://figma.com/ai. This has been in beta for 3 months with overwhelmingly positive feedback. Tone should be exciting and forward-looking.",
     },
     "slides_launch": {
         "campaign_name": "Figma Slides Launch",
@@ -79,7 +79,7 @@ SAMPLE_BRIEFS = {
                          "Target audience is product managers and design leads who already use Figma for design work. "
                          "The big hook: turn any Figma frame into a slide with one click, real-time collaboration on decks, and presenter mode built in. "
                          "Goal is 2,000 new Slides projects created in the first week. "
-                         "CTA should be 'Try Figma Slides' linking to figma.com/slides. "
+                         "CTA should be 'Try Figma Slides' linking to https://figma.com/slides. "
                          "We've been in beta with 200 teams and NPS is 72. "
                          "Tone should be exciting but professional — this is a major new product, not just a feature update."),
     },
@@ -101,7 +101,7 @@ SAMPLE_BRIEFS = {
                          "Early bird pricing is $399 (saves $200) and we're capping early access at the first 3,000 registrations. "
                          "Keynote lineup: Dylan Field, Sho Kuwamoto, and a surprise guest from the design world. "
                          "This year's theme is 'Design at Scale' — workshops on design systems, AI-assisted design workflows, and cross-functional collaboration. "
-                         "CTA: 'Register now' → config.figma.com/2026. "
+                         "CTA: 'Register now' → https://config.figma.com/2026. "
                          "Make it feel exclusive since this goes out before the public announcement."),
     },
     "workshop": {
@@ -118,7 +118,7 @@ SAMPLE_BRIEFS = {
         "freeform_text": ("Free virtual workshop next Wednesday: 'Advanced Prototyping in Figma.' "
                          "60-minute hands-on session with the Figma education team. "
                          "For intermediate Figma users. Limited to 500 seats. "
-                         "CTA: Save your spot → figma.com/workshops/prototyping."),
+                         "CTA: Save your spot → https://figma.com/workshops/prototyping."),
     },
 
     # ── Feature Update ──
@@ -134,7 +134,7 @@ SAMPLE_BRIEFS = {
         "additional_context": "This was our #1 community request. The old system only supported color variables.",
         "freeform_text": ("We just shipped a major update to Variables — they now support typography and spacing tokens and work across all component properties. "
                          "This was the #1 community request. Target: 20% of component users try the new system within 30 days. "
-                         "CTA: 'Learn more' → help.figma.com/variables. "
+                         "CTA: 'Learn more' → https://help.figma.com/variables. "
                          "Audience is all Figma users who've used components in the last 90 days."),
     },
     "dev_mode": {
@@ -152,7 +152,7 @@ SAMPLE_BRIEFS = {
                          "Target audience is frontend engineers and engineering managers at companies using Figma. "
                          "We want 30% of Dev Mode users to try the VS Code extension in the first month. "
                          "The community has been asking for better designer-to-developer handoff for years — this is our answer. "
-                         "CTA: 'Get the extension' → figma.com/dev-mode. Include a mention that it's free for all Figma plans."),
+                         "CTA: 'Get the extension' → https://figma.com/dev-mode. Include a mention that it's free for all Figma plans."),
     },
 
     # ── Educational / Newsletter ──
@@ -172,7 +172,7 @@ SAMPLE_BRIEFS = {
                          "Key insights: teams tracking component reuse see 40% faster time-to-market, "
                          "the most successful teams treat their design system as an internal product with a dedicated PM, "
                          "and the #1 predictor of adoption isn't tooling — it's having a Slack channel where designers and engineers actually talk to each other. "
-                         "CTA: 'Read the full report' → figma.com/design-systems-report. "
+                         "CTA: 'Read the full report' → https://figma.com/design-systems-report. "
                          "Audience is design ops leaders and design system managers. "
                          "Should feel like a thoughtful, research-backed newsletter — not marketing fluff."),
     },
@@ -192,7 +192,7 @@ SAMPLE_BRIEFS = {
                          "We want to show them what they've missed — AI features, Dev Mode, variables support, "
                          "and the new performance improvements (files load 2x faster now). "
                          "Offer a personal touch: mention that their team is still actively using Figma (FOMO angle). "
-                         "CTA: 'Open Figma' → figma.com. "
+                         "CTA: 'Open Figma' → https://figma.com. "
                          "Tone should be warm and welcoming, not guilt-trippy. "
                          "Maybe lead with 'A lot's happened in 3 months' and show a quick visual timeline of shipped features. "
                          "Audience is dormant users at companies with active Figma seats."),
@@ -209,7 +209,7 @@ SAMPLE_BRIEFS = {
         "additional_context": "Softer tone than the 90-day campaign. Keep it light and helpful.",
         "freeform_text": ("Haven't seen you in a bit — just checking in. "
                          "We shipped some things you might like: faster file loading, new commenting threads, and dark mode for the desktop app. "
-                         "CTA: Open Figma → figma.com. Keep it light and casual, not pushy."),
+                         "CTA: Open Figma → https://figma.com. Keep it light and casual, not pushy."),
     },
 }
 
@@ -233,7 +233,7 @@ Fields:
 - goal: what success looks like, with metrics if available (string)
 - key_message: the one thing they need to know (string)
 - cta_text: 2-4 word call to action (string)
-- cta_url: URL for the CTA, use figma.com if unclear (string)
+- cta_url: full URL for the CTA — always include https:// (e.g. https://figma.com/ai). If only a domain is given, prepend https://
 - tone: one of [product_launch, event, feature_update, educational, reengagement]
 - template_type: one of [product_launch, event_invite, feature_update, educational, reengagement]
 - event_date: date string if this is an event, null otherwise

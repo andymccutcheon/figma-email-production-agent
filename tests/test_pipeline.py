@@ -68,20 +68,38 @@ def test_intake_cta_too_long():
 
 
 def test_intake_invalid_url():
-    """CTA URL must start with http:// or https://."""
+    """Clearly invalid CTA URLs should be rejected."""
     brief = EmailBrief(
         campaign_name="Test",
         audience="Designers",
         goal="Drive signups for the new feature",
         key_message="Something exciting is here",
         cta_text="Try it",
-        cta_url="figma.com",
+        cta_url="not a valid url",
         tone="product_launch",
         template_type="product_launch",
     )
     errors = brief.validate()
-    assert any("must start with http" in e for e in errors), f"Expected URL validation error, got: {errors}"
+    assert any("valid URL" in e for e in errors), f"Expected URL validation error, got: {errors}"
     print("✓ intake_invalid_url: URL validation enforced")
+
+
+def test_intake_bare_domain_normalized():
+    """Bare domains like help.figma.com/path should be normalized to https://."""
+    brief = EmailBrief(
+        campaign_name="Test",
+        audience="Designers",
+        goal="Drive signups for the new feature",
+        key_message="Something exciting is here",
+        cta_text="Learn more",
+        cta_url="help.figma.com/variables",
+        tone="feature_update",
+        template_type="feature_update",
+    )
+    assert brief.cta_url == "https://help.figma.com/variables"
+    errors = brief.validate()
+    assert errors == [], f"Expected normalized URL to pass, got: {errors}"
+    print("✓ intake_bare_domain_normalized: bare domain gets https:// prepended")
 
 
 def test_intake_invalid_tone():
@@ -264,6 +282,7 @@ def run_all_tests():
             test_intake_missing_fields,
             test_intake_cta_too_long,
             test_intake_invalid_url,
+            test_intake_bare_domain_normalized,
             test_intake_invalid_tone,
         ]),
         ("Brand Check", [

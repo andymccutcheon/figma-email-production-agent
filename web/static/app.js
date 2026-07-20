@@ -18,6 +18,7 @@ const formFields = document.getElementById('brief-form');
 const briefInput = document.getElementById('brief-input');
 const campaignDetails = document.getElementById('campaign-details');
 const panelHeader = document.querySelector('.brief-panel .panel-header h2');
+const samplePicker = document.querySelector('.brief-panel .sample-picker');
 
 // Sample briefs injected from server
 let samples = {};
@@ -91,6 +92,7 @@ document.getElementById('btn-new-campaign').addEventListener('click', () => {
   generateBtn.classList.remove('hidden');
   document.getElementById('generate-area').classList.remove('hidden');
   panelHeader.textContent = 'Campaign Brief';
+  if (samplePicker) samplePicker.classList.remove('hidden');
   emptyState.classList.remove('hidden');
   resultsContent.classList.add('hidden');
 
@@ -377,6 +379,7 @@ function showResults(result) {
   briefInput.classList.add('hidden');
   campaignDetails.classList.remove('hidden');
   panelHeader.textContent = 'Campaign Details';
+  if (samplePicker) samplePicker.classList.add('hidden');
 
   // Populate details
   document.getElementById('detail-name').textContent = briefData.campaign_name || '\u2014';
