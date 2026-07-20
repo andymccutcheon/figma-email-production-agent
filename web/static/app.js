@@ -24,15 +24,20 @@ const samplePicker = document.querySelector('.brief-panel .sample-picker');
 let samples = {};
 let currentMode = 'freeform';
 let isRegenerating = false;
+let cachedDemo = null;  // Pre-loaded on page load for instant demo
 
 // Initialize: show freeform, hide structured form
 freeformInput.classList.remove('hidden');
 formFields.classList.add('hidden');
 
-// Load samples on page load
+// Load samples and pre-cache demo result on page load
 fetch('/api/samples')
   .then(r => r.json())
   .then(data => { samples = data; })
+  .catch(() => {});
+fetch('/api/cached-demo')
+  .then(r => r.ok ? r.json() : null)
+  .then(data => { cachedDemo = data; })
   .catch(() => {});
 
 // ── Mode Toggle ──
@@ -204,12 +209,26 @@ async function submitStructured() {
     && data.campaign_name === 'Figma AI Launch'
     && data.template_type === 'product_launch';
 
-  const endpoint = isDefaultSample ? '/api/cached-demo' : '/api/generate';
-  const fetchOptions = isDefaultSample
-    ? { method: 'GET' }
-    : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) };
-
   try {
+    let result;
+
+    if (isDefaultSample && cachedDemo) {
+      // Pre-loaded cache — zero network latency, animate steps quickly then show
+      result = cachedDemo;
+      markStep(steps.generate, 'done');
+      setTimeout(() => { markStep(steps.brand, 'active'); }, 100);
+      setTimeout(() => { markStep(steps.brand, 'done'); }, 300);
+      setTimeout(() => { markStep(steps.preview, 'active'); }, 350);
+      setTimeout(() => { markStep(steps.preview, 'done'); }, 550);
+      setTimeout(() => showResults(result), 650);
+      return;
+    }
+
+    const endpoint = isDefaultSample ? '/api/cached-demo' : '/api/generate';
+    const fetchOptions = isDefaultSample
+      ? { method: 'GET' }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) };
+
     const resp = await fetch(endpoint, fetchOptions);
 
     // If cached demo is unavailable, fall back to real generation
@@ -219,7 +238,7 @@ async function submitStructured() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
-      const result = await fallbackResp.json();
+      result = await fallbackResp.json();
       markStep(steps.generate, 'done');
       setTimeout(() => { markStep(steps.brand, 'active'); }, 200);
       setTimeout(() => { markStep(steps.brand, 'done'); }, 600);
@@ -229,7 +248,7 @@ async function submitStructured() {
       return;
     }
 
-    const result = await resp.json();
+    result = await resp.json();
 
     if (result.status === 'failed') {
       markStep(steps.generate, 'done');
