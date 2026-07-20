@@ -259,7 +259,7 @@ body {
 }
 
 .results-panel {
-  max-height: calc(100vh - var(--topbar-height) - 56px);
+  max-height: calc(100vh - var(--topbar-height) - 40px);
   position: sticky;
   top: calc(var(--topbar-height) + 28px);
 }
@@ -1195,7 +1195,7 @@ body {
 
 #email-iframe {
   width: 100%;
-  height: 520px;
+  height: 680px;
   border: none;
   background: #fff;
 }
@@ -1248,7 +1248,7 @@ body {
   box-shadow: var(--shadow-md);
   border-radius: 2px;
   width: 600px;
-  min-height: 500px;
+  min-height: 680px;
   transition: width var(--duration-normal) var(--ease-out);
 }
 
@@ -1263,7 +1263,7 @@ body {
   font-family: var(--font-mono);
   font-size: 12.5px;
   line-height: 1.7;
-  max-height: 520px;
+  max-height: 680px;
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-all;
@@ -1505,6 +1505,6 @@ body {
   .empty-state { padding: 64px 24px; }
   .loading-state { padding: 64px 24px; }
   .tab { padding: 8px 14px; font-size: 12px; }
-  #email-iframe { height: 360px; }
-  .code-block { max-height: 360px; }
+  #email-iframe { height: 520px; }
+  .code-block { max-height: 520px; }
 }

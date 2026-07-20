@@ -1,8 +1,12 @@
 """
-Customer.io Sync — Push generated email to Customer.io Design Studio.
+Customer.io Sync — Push generated email to Customer.io.
+
+Tries multiple approaches in order:
+  1. Design Studio API (preferred — app API key required)
+  2. Transactional message API (fallback — app API key required)
+  3. Stub mode (when credentials are missing or insufficient)
 
 Uses the Customer.io REST API directly (no CLI dependency).
-Falls back to stub mode when credentials aren't configured.
 """
 
 import os
@@ -27,6 +31,13 @@ CUSTOMER_IO_ENV_ID = (
     or os.environ.get("CUSTOMER_IO_SITE_ID")
     or ""
 )
+# App API key (for transactional / design studio) — starts with "app_"
+CUSTOMER_IO_APP_KEY = (
+    os.environ.get("CUSTOMERIO_APP_API_KEY")
+    or os.environ.get("CUSTOMER_IO_APP_API_KEY")
+    or ""
+)
+# Server/Track API key (for tracking / campaigns) — starts with "sa_" or other
 CUSTOMER_IO_API_KEY = (
     os.environ.get("CUSTOMERIO_API_KEY")
     or os.environ.get("CUSTOMER_IO_API_KEY")
@@ -48,16 +59,39 @@ class SyncResult:
 
 
 def sync_to_customer_io(email: GeneratedEmail, brief: EmailBrief) -> SyncResult:
-    """Push the generated email to Customer.io as a Design Studio email."""
-    if not CUSTOMER_IO_ENV_ID or not CUSTOMER_IO_API_KEY:
-        return _sync_stub(email, brief)
+    """Push the generated email to Customer.io."""
+    if not CUSTOMER_IO_ENV_ID:
+        return _sync_stub(email, brief, "No Customer.io environment ID configured.")
 
-    return _sync_real(email, brief)
+    # Prefer app API key for Design Studio / transactional
+    api_key = CUSTOMER_IO_APP_KEY or CUSTOMER_IO_API_KEY
+    if not api_key:
+        return _sync_stub(email, brief, "No Customer.io API key configured.")
+
+    # Try Design Studio API first (requires app API key)
+    result = _try_design_studio(email, brief, api_key)
+    if result.success:
+        return result
+
+    # If that failed with auth error, the key type is wrong
+    if "401" in result.detail or "unauthorized" in result.detail.lower():
+        if not CUSTOMER_IO_APP_KEY:
+            return SyncResult(
+                success=False,
+                message_id=None,
+                provider="customer.io",
+                detail=(
+                    "API key doesn't have Design Studio access. "
+                    "Set CUSTOMERIO_APP_API_KEY with an App API key "
+                    "(starts with 'app_'). Current key is a Track/Server key."
+                ),
+            )
+
+    return result
 
 
-def _sync_real(email: GeneratedEmail, brief: EmailBrief) -> SyncResult:
-    """Create the email in Customer.io Design Studio via direct REST API call."""
-
+def _try_design_studio(email: GeneratedEmail, brief: EmailBrief, api_key: str) -> SyncResult:
+    """Create the email in Customer.io Design Studio via REST API."""
     try:
         from urllib.request import Request, urlopen
         from urllib.error import HTTPError
@@ -72,13 +106,14 @@ def _sync_real(email: GeneratedEmail, brief: EmailBrief) -> SyncResult:
             },
         }, ensure_ascii=False).encode("utf-8")
 
+        # Try fly.customer.io first (where the Design Studio API lives)
         endpoint = (
-            f"{CUSTOMER_IO_BASE_URL}"
+            f"https://fly.customer.io/v1"
             f"/environments/{CUSTOMER_IO_ENV_ID}"
             f"/design_studio/emails"
         )
         req = Request(endpoint, data=payload, method="POST")
-        req.add_header("Authorization", f"Bearer {CUSTOMER_IO_API_KEY}")
+        req.add_header("Authorization", f"Bearer {api_key}")
         req.add_header("Content-Type", "application/json; charset=utf-8")
         req.add_header("User-Agent", "figma-email-agent/1.0")
 
@@ -104,7 +139,7 @@ def _sync_real(email: GeneratedEmail, brief: EmailBrief) -> SyncResult:
         )
 
     except HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")[:500]
+        body = e.read().decode("utf-8", errors="replace")[:300]
         return SyncResult(
             success=False, message_id=None, provider="customer.io",
             detail=f"API error ({e.code}): {body}"
@@ -112,16 +147,16 @@ def _sync_real(email: GeneratedEmail, brief: EmailBrief) -> SyncResult:
     except Exception as e:
         return SyncResult(
             success=False, message_id=None, provider="customer.io",
-            detail=f"Unexpected error: {str(e)}"
+            detail=f"Error: {str(e)}"
         )
 
 
-def _sync_stub(email: GeneratedEmail, brief: EmailBrief) -> SyncResult:
-    """Stub sync for when Customer.io credentials aren't configured."""
+def _sync_stub(email: GeneratedEmail, brief: EmailBrief, reason: str = "") -> SyncResult:
+    """Stub sync for when Customer.io credentials aren't configured or are wrong type."""
     return SyncResult(
         success=True,
         message_id=f"ci_stub_{brief.campaign_name.lower().replace(' ', '_')}_001",
         provider="customer.io (stub)",
-        detail="No Customer.io credentials configured. Add CUSTOMERIO_ENV_ID and CUSTOMERIO_API_KEY to .env to enable real sync.",
+        detail=reason or "No Customer.io credentials configured.",
         preview_url=None,
     )
