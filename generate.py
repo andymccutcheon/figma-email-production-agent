@@ -1,11 +1,9 @@
 """
-Email Generator — LLM-powered email creation using MJML templates.
+Email Generator — LLM-powered email creation using table-based HTML.
 
-MJML is compiled to production-ready HTML with cross-client compatibility
-(Outlook, Gmail, Apple Mail, mobile). The pipeline is:
-  1. LLM (or demo fallback) produces MJML XML
-  2. compile_mjml() converts to HTML via npx mjml
-  3. Brand checker and preview consume the compiled HTML
+The pipeline is:
+  1. LLM (or demo fallback) produces production-ready HTML email markup
+  2. Brand checker and preview consume the HTML directly
 
 Primary provider: DeepSeek (OpenAI-compatible API).
 Falls back to demo/simulated generation when no API key is available.
@@ -14,9 +12,6 @@ Falls back to demo/simulated generation when no API key is available.
 import json
 import os
 import re
-import subprocess
-import tempfile
-import xml.etree.ElementTree as ET
 from dataclasses import dataclass, asdict
 from typing import Optional
 
@@ -38,274 +33,90 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-6")
 
 
-# ── MJML Compilation ───────────────────────────────────────
+# ── HTML Email Building Blocks ───────────────────────────────
 
-def compile_mjml(mjml: str) -> str:
-    """Compile MJML XML to production-ready HTML.
-
-    Tries local MJML binary first, then npx, then falls back to a basic
-    Python-based converter that produces renderable (but not Outlook-optimized)
-    HTML for preview purposes.
-    """
-    # Strip any markdown code fences the LLM may have wrapped the MJML in
-    mjml = mjml.strip()
-    mjml = re.sub(r'^```(?:mjml|xml|html)?\s*\n?', '', mjml)
-    mjml = re.sub(r'\n?```\s*$', '', mjml)
-    mjml = mjml.strip()
-
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.mjml', delete=False, encoding='utf-8') as f:
-        f.write(mjml)
-        mjml_path = f.name
-
-    compiled = None
-
-    # Try 1: local node_modules/.bin/mjml
-    try:
-        local_mjml = os.path.join(os.path.dirname(__file__) if '__file__' in dir() else '.', 'node_modules', '.bin', 'mjml')
-        result = subprocess.run(
-            [local_mjml, mjml_path, "--config.minify=true", "--config.validationLevel=soft"],
-            capture_output=True, text=True, timeout=30,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            compiled = result.stdout
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        pass
-
-    # Try 2: npx mjml (download on-the-fly)
-    if compiled is None:
-        try:
-            result = subprocess.run(
-                ["npx", "--yes", "mjml", mjml_path, "--config.minify=true", "--config.validationLevel=soft"],
-                capture_output=True, text=True, timeout=30,
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                compiled = result.stdout
-            elif result.stdout.strip():
-                compiled = result.stdout  # Partial output
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
-
-    # Try 3: Python-based fallback (basic conversion, no Outlook VML)
-    if compiled is None:
-        print("[MJML] npx/mjml unavailable — using Python fallback converter")
-        compiled = _mjml_to_html_python(mjml)
-
-    try:
-        os.unlink(mjml_path)
-    except OSError:
-        pass
-
-    return compiled
+FONT_STACK = "'Helvetica Neue', Arial, sans-serif"
 
 
-def _mjml_to_html_python(mjml: str) -> str:
-    """Basic Python-based MJML-to-HTML converter for preview fallback.
-
-    Does NOT produce Outlook VML or responsive media queries — it's meant
-    to produce renderable HTML for the browser preview when npx mjml is
-    unavailable (e.g. on Vercel serverless where npm packages can't be
-    downloaded at runtime).
-    """
-    # MJML uses namespaced tags, strip the namespace for easier parsing
-    cleaned = re.sub(r'xmlns="[^"]*"', '', mjml)
-    cleaned = re.sub(r'<mjml[^>]*>', '<mjml>', cleaned, count=1)
-    cleaned = re.sub(r'</mjml>', '</mjml>', cleaned, count=1)
-
-    try:
-        root = ET.fromstring(cleaned)
-    except ET.ParseError as e:
-        # If XML parsing fails, wrap raw MJML in a basic HTML doc
-        escaped = mjml.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-        return f"""<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><title>Email Preview</title></head>
-<body style="font-family:Helvetica,Arial,sans-serif;padding:40px;background:#f5f5f5;color:#333;">
-<h3>⚠ MJML compilation unavailable</h3>
-<p>The email was generated as MJML but could not be compiled to HTML in this environment. Rendering raw source below.</p>
-<pre style="background:#fff;padding:20px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.5;">{escaped}</pre>
-</body></html>"""
-
-    # Extract head elements
-    title = ""
-    extra_styles = ""
-
-    for child in root:
-        if child.tag == 'mj-head':
-            for el in child:
-                if el.tag == 'mj-title':
-                    title = (el.text or '').strip()
-                elif el.tag == 'mj-style':
-                    extra_styles += (el.text or '')
-                # mj-attributes are applied per-element, handled during conversion
-        elif child.tag == 'mj-body':
-            body_content = _convert_mj_body(child)
-        else:
-            # Direct children of <mjml> that aren't <mj-head> or <mj-body>
-            pass
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title or 'Email'}</title>
-<style>
-  body {{ margin:0; padding:0; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }}
-  img {{ border:0; height:auto; line-height:100%; outline:none; text-decoration:none; max-width:100%; }}
-  {extra_styles}
-</style>
-</head>
-<body style="word-spacing:normal;background-color:#F5F5F5;">
-{body_content}
-</body>
-</html>"""
+def _normalize_html_body(html: str) -> str:
+    """Strip markdown fences from LLM HTML output."""
+    html = html.strip()
+    html = re.sub(r'^```(?:html|xml)?\s*\n?', '', html)
+    html = re.sub(r'\n?```\s*$', '', html)
+    return html.strip()
 
 
-def _convert_mj_body(body_el) -> str:
-    """Convert <mj-body> and its children to HTML table structure."""
-    bg = body_el.get('background-color', '#F5F5F5')
-
-    rows = []
-    for child in body_el:
-        if child.tag == 'mj-section':
-            rows.append(_convert_mj_section(child))
-        elif child.tag == 'mj-wrapper':
-            for sub in child:
-                if sub.tag == 'mj-section':
-                    rows.append(_convert_mj_section(sub))
-
-    inner = '\n'.join(rows)
-    return f'<div style="background-color:{bg};margin:0 auto;max-width:600px;">\n{inner}\n</div>'
-
-
-def _convert_mj_section(el) -> str:
-    """Convert <mj-section> to a table row."""
-    bg = el.get('background-color', '#FFFFFF')
-    padding = el.get('padding', '20px 0')
-
-    cols = []
-    for child in el:
-        if child.tag == 'mj-column':
-            cols.append(_convert_mj_column(child))
-
-    cols_html = '\n'.join(cols)
-    return f"""<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:{bg};width:100%;">
+def _html_section(bg: str, padding: str, inner: str) -> str:
+    return f"""<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:{bg};width:100%;max-width:600px;margin:0 auto;">
 <tr><td style="padding:{padding};">
-{cols_html}
+{inner}
 </td></tr></table>"""
 
 
-def _convert_mj_column(el) -> str:
-    """Convert <mj-column> to a table cell with content."""
-    width = el.get('width', '100%')
-    padding = el.get('padding', '0')
-
-    inner = []
-    for child in el:
-        converted = _convert_element(child)
-        if converted:
-            inner.append(converted)
-
-    inner_html = '\n'.join(inner)
-    return f"""<div style="display:inline-block;vertical-align:top;width:{width};padding:{padding};">
-{inner_html}
-</div>"""
-
-
-# Map MJML attribute names to inline CSS properties
-_STYLE_MAP = {
-    'color': 'color',
-    'font-size': 'font-size',
-    'font-weight': 'font-weight',
-    'font-family': 'font-family',
-    'line-height': 'line-height',
-    'text-align': 'text-align',
-    'align': 'text-align',
-    'background-color': 'background-color',
-    'padding': 'padding',
-    'padding-top': 'padding-top',
-    'padding-bottom': 'padding-bottom',
-    'padding-left': 'padding-left',
-    'padding-right': 'padding-right',
-    'border-radius': 'border-radius',
-    'width': 'width',
-    'height': 'height',
-    'text-decoration': 'text-decoration',
-}
-
-_COLOR_ATTRS = {'color', 'background-color'}
+def _html_text(
+    content: str,
+    *,
+    font_size: str = "16px",
+    font_weight: str = "400",
+    color: str = "#1E1E1E",
+    align: str = "left",
+    padding: str = "0 25px",
+    padding_bottom: str = "12px",
+    line_height: str = "1.6",
+    letter_spacing: Optional[str] = None,
+    text_transform: Optional[str] = None,
+) -> str:
+    extra = ""
+    if letter_spacing:
+        extra += f"letter-spacing:{letter_spacing};"
+    if text_transform:
+        extra += f"text-transform:{text_transform};"
+    return (
+        f'<div style="font-family:{FONT_STACK};font-size:{font_size};font-weight:{font_weight};'
+        f'color:{color};text-align:{align};padding:{padding};padding-bottom:{padding_bottom};'
+        f'line-height:{line_height};{extra}">{content}</div>'
+    )
 
 
-def _mj_style(el, defaults=None) -> str:
-    """Build an inline style string from MJML element attributes."""
-    styles = dict(defaults or {})
-    for attr, val in el.attrib.items():
-        css_prop = _STYLE_MAP.get(attr)
-        if css_prop:
-            styles[css_prop] = val
-    return ';'.join(f'{k}:{v}' for k, v in styles.items())
+def _html_button(text: str, url: str, align: str = "center") -> str:
+    return (
+        f'<div style="text-align:{align};padding:10px 25px;">'
+        f'<a href="{url}" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;'
+        f'font-family:{FONT_STACK};font-size:16px;font-weight:600;border-radius:8px;'
+        f'padding:14px 32px;text-decoration:none;">{text}</a></div>'
+    )
 
 
-def _convert_element(el) -> str:
-    """Convert a single MJML element to its HTML equivalent."""
-    tag = el.tag
-
-    if tag == 'mj-text':
-        style = _mj_style(el, {'font-size': '16px', 'color': '#1E1E1E', 'line-height': '1.6'})
-        text = el.text or ''
-        # Preserve inner HTML (links, bold, etc.) by converting children
-        inner = text
-        for child in el:
-            inner += ET.tostring(child, encoding='unicode')
-        if el.tail:
-            inner += el.tail
-        return f'<div style="{style}">{inner.strip()}</div>'
-
-    elif tag == 'mj-button':
-        href = el.get('href', '#')
-        bg = el.get('background-color', '#0D99FF')
-        color = el.get('color', '#FFFFFF')
-        fs = el.get('font-size', '16px')
-        fw = el.get('font-weight', '600')
-        br = el.get('border-radius', '8px')
-        padding = el.get('padding', '14px 32px')
-        text = (el.text or '').strip()
-        align = el.get('align', 'center')
-        return f"""<div style="text-align:{align};padding:10px 0;">
-<a href="{href}" style="display:inline-block;background:{bg};color:{color};font-size:{fs};font-weight:{fw};border-radius:{br};padding:{padding};text-decoration:none;font-family:Helvetica,Arial,sans-serif;">{text}</a>
-</div>"""
-
-    elif tag == 'mj-image':
-        src = el.get('src', '')
-        alt = el.get('alt', '')
-        width = el.get('width', '100%')
-        align = el.get('align', 'center')
-        return f'<div style="text-align:{align};padding:10px 0;"><img src="{src}" alt="{alt}" style="width:{width};max-width:100%;height:auto;border:0;" /></div>'
-
-    elif tag == 'mj-divider':
-        border_color = el.get('border-color', '#E5E5E5')
-        border_width = el.get('border-width', '1px')
-        padding = el.get('padding', '10px 25px')
-        return f'<div style="padding:{padding};"><hr style="border:none;border-top:{border_width} solid {border_color};" /></div>'
-
-    elif tag == 'mj-spacer':
-        height = el.get('height', '20px')
-        return f'<div style="height:{height};"></div>'
-
-    elif tag == 'mj-social':
-        return '<div><!-- social icons placeholder --></div>'
-
-    elif tag == 'mj-navbar':
-        return '<div><!-- navbar placeholder --></div>'
-
-    elif tag == 'mj-raw':
-        return el.text or ''
-
-    # Catch-all: return text content
-    text = el.text or ''
-    for child in el:
-        text += ET.tostring(child, encoding='unicode')
-    return f'<div>{text.strip()}</div>'
+def _html_footer() -> str:
+    return _html_section(
+        "#FFFFFF",
+        "30px 30px",
+        _html_text(
+            "You're receiving this because you're part of the Figma community.",
+            font_size="12px",
+            color="#666666",
+            align="center",
+            padding_bottom="8px",
+            line_height="1.5",
+        )
+        + _html_text(
+            '<a href="https://figma.com/unsubscribe" style="color:#666666;text-decoration:none;">Unsubscribe</a>'
+            ' · <a href="https://figma.com/preferences" style="color:#666666;text-decoration:none;">Email Preferences</a>',
+            font_size="12px",
+            color="#666666",
+            align="center",
+            padding_bottom="12px",
+            line_height="1.5",
+        )
+        + _html_text(
+            "Figma, Inc. 760 Market St, San Francisco, CA 94102",
+            font_size="12px",
+            color="#666666",
+            align="center",
+            padding_bottom="0",
+            line_height="1.5",
+        ),
+    )
 
 
 # ── Logo URL ───────────────────────────────────────────────
@@ -317,7 +128,7 @@ LOGO_URL = "https://userimg-assets.customeriomail.com/images/client-env-226115/0
 class GeneratedEmail:
     subject_line: str
     preview_text: str
-    html_body: str       # Compiled HTML (from MJML)
+    html_body: str       # Production-ready HTML email markup
     plain_text: str
     template_used: str
     confidence_score: int  # 1-5
@@ -343,7 +154,7 @@ def load_context(name: str) -> str:
 
 
 def build_system_prompt(brief: EmailBrief) -> str:
-    """Build the full system prompt for MJML email generation."""
+    """Build the full system prompt for HTML email generation."""
     prompt = load_prompt("email-generation")
     brand = load_context("brand-guidelines")
     voice = load_context("voice-and-tone")
@@ -441,7 +252,7 @@ def _extract_json(text: str) -> dict:
 
 
 def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
-    """Generate a full email using DeepSeek Pro. LLM outputs MJML, we compile to HTML."""
+    """Generate a full email using DeepSeek Pro. LLM outputs HTML directly."""
     system_prompt = build_system_prompt(brief)
     response_text = _call_deepseek(
         system_prompt=system_prompt,
@@ -450,15 +261,9 @@ def _generate_with_deepseek(brief: EmailBrief) -> GeneratedEmail:
     )
     data = _extract_json(response_text)
 
-    # The LLM outputs MJML in html_body — compile it to real HTML
-    # Strip markdown fences before checking
-    mjml_source = data.get("html_body", data.get("mjml_body", ""))
-    if mjml_source:
-        mjml_source = mjml_source.strip()
-        mjml_source = re.sub(r'^```(?:mjml|xml|html)?\s*\n?', '', mjml_source)
-        mjml_source = re.sub(r'\n?```\s*$', '', mjml_source)
-    if mjml_source and "<mjml" in mjml_source:
-        data["html_body"] = compile_mjml(mjml_source)
+    html_body = data.get("html_body", "")
+    if html_body:
+        data["html_body"] = _normalize_html_body(html_body)
 
     return GeneratedEmail(**{k: data[k] for k in GeneratedEmail.__dataclass_fields__ if k in data})
 
@@ -536,14 +341,9 @@ def _generate_with_claude(brief: EmailBrief, api_key: str) -> GeneratedEmail:
 
     data = json.loads(response_text)
 
-    # Compile MJML to HTML if present
-    mjml_source = data.get("html_body", data.get("mjml_body", ""))
-    if mjml_source:
-        mjml_source = mjml_source.strip()
-        mjml_source = re.sub(r'^```(?:mjml|xml|html)?\s*\n?', '', mjml_source)
-        mjml_source = re.sub(r'\n?```\s*$', '', mjml_source)
-    if mjml_source and "<mjml" in mjml_source:
-        data["html_body"] = compile_mjml(mjml_source)
+    html_body = data.get("html_body", "")
+    if html_body:
+        data["html_body"] = _normalize_html_body(html_body)
 
     return GeneratedEmail(**{k: data[k] for k in GeneratedEmail.__dataclass_fields__ if k in data})
 
@@ -559,12 +359,11 @@ def get_active_provider() -> str:
 LAST_USED_PROVIDER = "demo"
 
 
-# ── Demo Mode (MJML-based) ─────────────────────────────────
+# ── Demo Mode (HTML-based) ─────────────────────────────────
 
 def _generate_demo(brief: EmailBrief) -> GeneratedEmail:
-    """Generate a simulated email using MJML templates. No API calls."""
-    mjml = _build_demo_mjml(brief)
-    html_body = compile_mjml(mjml)
+    """Generate a simulated email using HTML templates. No API calls."""
+    html_body = _build_demo_html(brief)
 
     subject_line = _generate_subject_line(brief)
     preview_text = _generate_preview_text(brief)
@@ -580,307 +379,211 @@ def _generate_demo(brief: EmailBrief) -> GeneratedEmail:
     )
 
 
-def _build_demo_mjml(brief: EmailBrief) -> str:
-    """Build a complete MJML document for demo mode."""
-    template_content = _get_template_mjml(brief)
+def _build_demo_html(brief: EmailBrief) -> str:
+    """Build a complete HTML email document for demo mode."""
+    template_content = _get_template_html(brief)
+    logo_block = (
+        f'<div style="text-align:center;padding:10px 0;">'
+        f'<img src="{LOGO_URL}" alt="Figma" width="40" '
+        f'style="width:40px;max-width:100%;height:auto;border:0;" /></div>'
+    )
 
-    return f"""<mjml lang="en">
-  <mj-head>
-    <mj-title>{brief.campaign_name}</mj-title>
-    <mj-attributes>
-      <mj-all font-family="'Helvetica Neue', Arial, sans-serif" />
-      <mj-text font-size="16px" color="#1E1E1E" line-height="1.6" />
-      <mj-button background-color="#0D99FF" color="#FFFFFF" font-weight="600" border-radius="8px" padding="14px 32px" font-size="16px" />
-    </mj-attributes>
-    <mj-style inline="inline">
-      .footer-text {{ color: #666666; font-size: 12px; }}
-    </mj-style>
-  </mj-head>
-  <mj-body background-color="#F5F5F5">
-    <!-- View in browser -->
-    <mj-section padding="12px 30px 0">
-      <mj-column>
-        <mj-text align="center" font-size="12px" color="#666666">
-          <a href="https://figma.com" style="color:#666666;">View in browser</a>
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <!-- Logo -->
-    <mj-section padding="24px 30px 8px">
-      <mj-column>
-        <mj-image src="{LOGO_URL}" alt="Figma" width="40px" align="center" />
-      </mj-column>
-    </mj-section>
-
-    {template_content}
-
-    <!-- Footer -->
-    <mj-section background-color="#FFFFFF" padding="30px 30px">
-      <mj-column>
-        <mj-text font-size="12px" color="#666666" align="center" padding="0 25px" padding-bottom="8px">
-          You're receiving this because you're part of the Figma community.
-        </mj-text>
-        <mj-text font-size="12px" color="#666666" align="center" padding="0 25px" padding-bottom="12px">
-          <a href="https://figma.com/unsubscribe" style="color:#666666;">Unsubscribe</a>
-          &middot; <a href="https://figma.com/preferences" style="color:#666666;">Email Preferences</a>
-        </mj-text>
-        <mj-text font-size="12px" color="#666666" align="center" padding="0 25px">
-          Figma, Inc. 760 Market St, San Francisco, CA 94102
-        </mj-text>
-      </mj-column>
-    </mj-section>
-  </mj-body>
-</mjml>"""
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{brief.campaign_name}</title>
+<style>
+  body {{ margin:0; padding:0; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }}
+  img {{ border:0; height:auto; line-height:100%; outline:none; text-decoration:none; max-width:100%; }}
+</style>
+</head>
+<body style="word-spacing:normal;background-color:#F5F5F5;margin:0;padding:0;">
+<div style="background-color:#F5F5F5;margin:0 auto;max-width:600px;">
+  {_html_section("#F5F5F5", "12px 30px 0", _html_text('<a href="https://figma.com" style="color:#666666;text-decoration:none;">View in browser</a>', font_size="12px", color="#666666", align="center", padding_bottom="0"))}
+  {_html_section("#F5F5F5", "24px 30px 8px", logo_block)}
+  {template_content}
+  {_html_footer()}
+</div>
+</body>
+</html>"""
 
 
-def _get_template_mjml(brief: EmailBrief) -> str:
-    """Return MJML content for the specific template type, following v3.0 design system."""
+def _get_template_html(brief: EmailBrief) -> str:
+    """Return HTML content for the specific template type, following v3.0 design system."""
 
     # ── Product Launch ──
     if brief.template_type == "product_launch":
-        return f"""<!-- Hero -->
-    <mj-section background-color="#FFFFFF" padding="40px 30px">
-      <mj-column>
-        <mj-text font-size="28px" font-weight="700" color="#000000" align="center" padding="0 25px" padding-bottom="12px">
-          {brief.campaign_name}
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" align="center" padding="0 25px" padding-bottom="24px" line-height="1.6">
-          {brief.key_message}
-        </mj-text>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>
-
-    <!-- Features -->
-    <mj-section background-color="#FAFAFA" padding="30px 30px">
-      <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
-          Designed for the way you work
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          AI-assisted design
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
-          Generate UI from text prompts, autocomplete repetitive tasks, and let AI handle the tedious layers so you can focus on creative decisions.
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          Real-time collaboration
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
-          Multiplayer cursors show what everyone's working on. Comments, audio calls, and version history are built in — no context switching.
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          Design systems that scale
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" line-height="1.6">
-          Variables, modes, and component properties let you build once and deploy everywhere. Ship consistent experiences across every surface.
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <!-- CTA Repeat -->
-    <mj-section background-color="#FFFFFF" padding="20px 30px">
-      <mj-column>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>"""
+        return (
+            _html_section(
+                "#FFFFFF",
+                "40px 30px",
+                _html_text(brief.campaign_name, font_size="28px", font_weight="700", color="#000000", align="center", padding_bottom="12px")
+                + _html_text(brief.key_message, align="center", padding_bottom="24px")
+                + _html_button(brief.cta_text, brief.cta_url),
+            )
+            + _html_section(
+                "#FAFAFA",
+                "30px 30px",
+                _html_text("Designed for the way you work", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
+                + _html_text("AI-assisted design", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "Generate UI from text prompts, autocomplete repetitive tasks, and let AI handle the tedious layers so you can focus on creative decisions.",
+                    padding_bottom="20px",
+                )
+                + _html_text("Real-time collaboration", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "Multiplayer cursors show what everyone's working on. Comments, audio calls, and version history are built in — no context switching.",
+                    padding_bottom="20px",
+                )
+                + _html_text("Design systems that scale", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "Variables, modes, and component properties let you build once and deploy everywhere. Ship consistent experiences across every surface.",
+                    padding_bottom="0",
+                ),
+            )
+            + _html_section("#FFFFFF", "20px 30px", _html_button(brief.cta_text, brief.cta_url))
+        )
 
     # ── Event Invite ──
-    elif brief.template_type == "event_invite":
+    if brief.template_type == "event_invite":
         event_date = brief.event_date or "Coming soon"
-        return f"""<!-- Event Hero -->
-    <mj-section background-color="#0D99FF" padding="50px 30px">
-      <mj-column>
-        <mj-text font-size="13px" font-weight="600" color="rgba(255,255,255,0.7)" align="center" text-transform="uppercase" padding="0 25px" padding-bottom="16px" letter-spacing="0.08em">
-          You're invited
-        </mj-text>
-        <mj-text font-size="28px" font-weight="700" color="#FFFFFF" align="center" padding="0 25px" padding-bottom="12px">
-          {brief.campaign_name}
-        </mj-text>
-        <mj-text font-size="18px" color="rgba(255,255,255,0.9)" align="center" padding="0 25px" padding-bottom="8px">
-          {event_date}
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <!-- Details -->
-    <mj-section background-color="#FFFFFF" padding="30px 30px">
-      <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
-          Why attend
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="12px" line-height="1.6">
-          Learn how the best design teams ship at scale — from design systems that serve hundreds of designers to AI-assisted workflows that cut production time in half.
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="12px" line-height="1.6">
-          Get hands-on with new Figma features before anyone else. Our workshops are small, practical, and led by the people who built the tools.
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="24px" line-height="1.6">
-          Connect with designers and builders who share your challenges. The hallway conversations are as valuable as the keynotes.
-        </mj-text>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>
-
-    <!-- CTA Repeat -->
-    <mj-section background-color="#FFFFFF" padding="20px 30px">
-      <mj-column>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>"""
+        return (
+            _html_section(
+                "#0D99FF",
+                "50px 30px",
+                _html_text(
+                    "You're invited",
+                    font_size="13px",
+                    font_weight="600",
+                    color="rgba(255,255,255,0.7)",
+                    align="center",
+                    padding_bottom="16px",
+                    letter_spacing="0.08em",
+                    text_transform="uppercase",
+                )
+                + _html_text(brief.campaign_name, font_size="28px", font_weight="700", color="#FFFFFF", align="center", padding_bottom="12px")
+                + _html_text(event_date, font_size="18px", color="rgba(255,255,255,0.9)", align="center", padding_bottom="0"),
+            )
+            + _html_section(
+                "#FFFFFF",
+                "30px 30px",
+                _html_text("Why attend", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
+                + _html_text(
+                    "Learn how the best design teams ship at scale — from design systems that serve hundreds of designers to AI-assisted workflows that cut production time in half.",
+                    padding_bottom="12px",
+                )
+                + _html_text(
+                    "Get hands-on with new Figma features before anyone else. Our workshops are small, practical, and led by the people who built the tools.",
+                    padding_bottom="12px",
+                )
+                + _html_text(
+                    "Connect with designers and builders who share your challenges. The hallway conversations are as valuable as the keynotes.",
+                    padding_bottom="24px",
+                )
+                + _html_button(brief.cta_text, brief.cta_url),
+            )
+            + _html_section("#FFFFFF", "20px 30px", _html_button(brief.cta_text, brief.cta_url))
+        )
 
     # ── Feature Update ──
-    elif brief.template_type == "feature_update":
-        return f"""<!-- Feature Update Hero -->
-    <mj-section background-color="#FFFFFF" padding="40px 30px">
-      <mj-column>
-        <mj-text font-size="13px" font-weight="600" color="#0D99FF" align="center" text-transform="uppercase" padding="0 25px" padding-bottom="16px" letter-spacing="0.06em">
-          New in Figma
-        </mj-text>
-        <mj-text font-size="28px" font-weight="700" color="#000000" align="center" padding="0 25px" padding-bottom="12px">
-          {brief.campaign_name}
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" align="center" padding="0 25px" padding-bottom="24px" line-height="1.6">
-          {brief.key_message}
-        </mj-text>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>
-
-    <!-- What Changed -->
-    <mj-section background-color="#FAFAFA" padding="30px 30px">
-      <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
-          What changed
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          Built for speed
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
-          We rebuilt the rendering engine from scratch. Files open in half the time, and every interaction feels instant — even on complex canvases with thousands of layers.
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          Smarter workflows
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
-          New keyboard shortcuts, improved search, and better layer organization let you spend less time navigating and more time designing.
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          Plays well with others
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" line-height="1.6">
-          Deeper integrations with the tools your team already uses. One-click exports, real-time embeds, and API access for custom workflows.
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <!-- CTA Repeat -->
-    <mj-section background-color="#FFFFFF" padding="20px 30px">
-      <mj-column>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>"""
+    if brief.template_type == "feature_update":
+        return (
+            _html_section(
+                "#FFFFFF",
+                "40px 30px",
+                _html_text(
+                    "New in Figma",
+                    font_size="13px",
+                    font_weight="600",
+                    color="#0D99FF",
+                    align="center",
+                    padding_bottom="16px",
+                    letter_spacing="0.06em",
+                    text_transform="uppercase",
+                )
+                + _html_text(brief.campaign_name, font_size="28px", font_weight="700", color="#000000", align="center", padding_bottom="12px")
+                + _html_text(brief.key_message, align="center", padding_bottom="24px")
+                + _html_button(brief.cta_text, brief.cta_url),
+            )
+            + _html_section(
+                "#FAFAFA",
+                "30px 30px",
+                _html_text("What changed", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
+                + _html_text("Built for speed", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "We rebuilt the rendering engine from scratch. Files open in half the time, and every interaction feels instant — even on complex canvases with thousands of layers.",
+                    padding_bottom="20px",
+                )
+                + _html_text("Smarter workflows", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "New keyboard shortcuts, improved search, and better layer organization let you spend less time navigating and more time designing.",
+                    padding_bottom="20px",
+                )
+                + _html_text("Plays well with others", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "Deeper integrations with the tools your team already uses. One-click exports, real-time embeds, and API access for custom workflows.",
+                    padding_bottom="0",
+                ),
+            )
+            + _html_section("#FFFFFF", "20px 30px", _html_button(brief.cta_text, brief.cta_url))
+        )
 
     # ── Re-engagement ──
-    elif brief.template_type == "reengagement":
-        return f"""<!-- Win-back Hero -->
-    <mj-section background-color="#FFFFFF" padding="40px 30px">
-      <mj-column>
-        <mj-text font-size="28px" font-weight="700" color="#000000" align="center" padding="0 25px" padding-bottom="12px">
-          A lot's happened
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" align="center" padding="0 25px" padding-bottom="24px" line-height="1.6">
-          {brief.key_message}
-        </mj-text>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>
-
-    <!-- What you've missed -->
-    <mj-section background-color="#FAFAFA" padding="30px 30px">
-      <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
-          What you've missed
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          AI features are live
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
-          Generate UI from text, autocomplete designs, and let AI handle the repetitive work. Thousands of teams are already using it daily.
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          Dev Mode keeps getting better
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px" line-height="1.6">
-          Annotated specs, automatic code snippets in 8 languages, and a VS Code extension that syncs design changes in real time.
-        </mj-text>
-        <mj-text font-size="16px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="6px">
-          2x faster file loading
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" line-height="1.6">
-          We rebuilt the rendering engine. Files open in half the time — even the big ones with thousands of layers.
-        </mj-text>
-      </mj-column>
-    </mj-section>
-
-    <!-- CTA Repeat -->
-    <mj-section background-color="#FFFFFF" padding="20px 30px">
-      <mj-column>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>"""
+    if brief.template_type == "reengagement":
+        return (
+            _html_section(
+                "#FFFFFF",
+                "40px 30px",
+                _html_text("A lot's happened", font_size="28px", font_weight="700", color="#000000", align="center", padding_bottom="12px")
+                + _html_text(brief.key_message, align="center", padding_bottom="24px")
+                + _html_button(brief.cta_text, brief.cta_url),
+            )
+            + _html_section(
+                "#FAFAFA",
+                "30px 30px",
+                _html_text("What you've missed", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
+                + _html_text("AI features are live", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "Generate UI from text, autocomplete designs, and let AI handle the repetitive work. Thousands of teams are already using it daily.",
+                    padding_bottom="20px",
+                )
+                + _html_text("Dev Mode keeps getting better", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "Annotated specs, automatic code snippets in 8 languages, and a VS Code extension that syncs design changes in real time.",
+                    padding_bottom="20px",
+                )
+                + _html_text("2x faster file loading", font_weight="600", color="#000000", padding_bottom="6px")
+                + _html_text(
+                    "We rebuilt the rendering engine. Files open in half the time — even the big ones with thousands of layers.",
+                    padding_bottom="0",
+                ),
+            )
+            + _html_section("#FFFFFF", "20px 30px", _html_button(brief.cta_text, brief.cta_url))
+        )
 
     # ── Educational / Newsletter ──
-    else:
-        return f"""<!-- Newsletter Header -->
-    <mj-section background-color="#FFFFFF" padding="40px 30px">
-      <mj-column>
-        <mj-text font-size="28px" font-weight="700" color="#000000" align="center" padding="0 25px" padding-bottom="12px">
-          {brief.campaign_name}
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" align="center" padding="0 25px" padding-bottom="24px" line-height="1.6">
-          {brief.key_message}
-        </mj-text>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>
-
-    <!-- Article body -->
-    <mj-section background-color="#FAFAFA" padding="30px 30px">
-      <mj-column>
-        <mj-text font-size="20px" font-weight="600" color="#000000" padding="0 25px" padding-bottom="20px">
-          What we're learning
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="16px" line-height="1.6">
-          {brief.goal}
-        </mj-text>
-        <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="24px" line-height="1.6">
-          The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation. The tools are the enabler — the culture is what makes it stick.
-        </mj-text>
-        <mj-button href="{brief.cta_url}" align="center">
-          {brief.cta_text}
-        </mj-button>
-      </mj-column>
-    </mj-section>"""
+    return (
+        _html_section(
+            "#FFFFFF",
+            "40px 30px",
+            _html_text(brief.campaign_name, font_size="28px", font_weight="700", color="#000000", align="center", padding_bottom="12px")
+            + _html_text(brief.key_message, align="center", padding_bottom="24px")
+            + _html_button(brief.cta_text, brief.cta_url),
+        )
+        + _html_section(
+            "#FAFAFA",
+            "30px 30px",
+            _html_text("What we're learning", font_size="20px", font_weight="600", color="#000000", padding_bottom="20px")
+            + _html_text(brief.goal, padding_bottom="16px")
+            + _html_text(
+                "The best teams we work with share a common trait: they treat design as a team sport, not a handoff. When engineers, PMs, and designers all work in the same canvas, decisions happen faster and nothing gets lost in translation. The tools are the enabler — the culture is what makes it stick.",
+                padding_bottom="24px",
+            )
+            + _html_button(brief.cta_text, brief.cta_url),
+        )
+    )
 
 
 # ── Subject / Preview helpers ──────────────────────────────

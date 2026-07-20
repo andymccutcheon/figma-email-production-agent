@@ -1,16 +1,16 @@
-# Email Templates (MJML)
+# Email Templates (HTML)
 
-> Template structures for common Figma email types. All templates are built in MJML.
-> The LLM selects and populates based on the brief, outputting valid MJML XML.
+> Template structures for common Figma email types. All templates use table-based HTML with inline styles.
+> The LLM selects and populates based on the brief, outputting a complete HTML document.
 
 ## Required Elements (every template)
 
-All MJML documents must include:
-1. `<mjml lang="en">` root
-2. `<mj-head>` with `<mj-title>`, `<mj-attributes>`, and `<mj-style>`
-3. Logo: `<mj-image src="LOGO_URL" alt="Figma" width="40px" align="center" />`
-4. View-in-browser link in first `<mj-section>`
-5. Footer `<mj-section>` with unsubscribe, preferences, and physical address
+All HTML emails must include:
+1. `<!DOCTYPE html>` and `<html lang="en">` root
+2. `<head>` with charset, viewport meta, and optional `<title>`
+3. Logo: `<img src="LOGO_URL" alt="Figma" width="40" />` centered near the top
+4. View-in-browser link in the first section
+5. Footer section with unsubscribe, preferences, and physical address
 6. All images have `alt` attribute
 
 The logo URL is: `https://userimg-assets.customeriomail.com/images/client-env-226115/01KXY0PTW2FWKDYZ4377K8BM3G.png`

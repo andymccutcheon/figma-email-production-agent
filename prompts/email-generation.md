@@ -1,7 +1,7 @@
-# email-generation.md — v3.0 (Design System + MJML)
+# email-generation.md — v3.1 (Design System + HTML)
 
 ## Purpose
-Generate a complete, visually polished marketing email from a structured brief. Output is valid MJML XML that compiles to cross-client HTML.
+Generate a complete, visually polished marketing email from a structured brief. Output is production-ready table-based HTML that renders in browser preview and email clients.
 
 ## Output Format
 Return a JSON object:
@@ -9,13 +9,13 @@ Return a JSON object:
 {
   "subject_line": "...",
   "preview_text": "...",
-  "html_body": "<mjml>...</mjml>",
+  "html_body": "<!DOCTYPE html><html>...</html>",
   "plain_text": "...",
   "template_used": "...",
   "confidence_score": 1-5
 }
 ```
-The `html_body` field MUST contain valid MJML XML. It will be compiled to HTML automatically.
+The `html_body` field MUST contain a complete HTML document with inline styles and table-based layout. Do NOT use MJML.
 
 ---
 
@@ -35,13 +35,13 @@ The `html_body` field MUST contain valid MJML XML. It will be compiled to HTML a
 ### Spacing System
 | Context | Value | Where |
 |---------|-------|-------|
-| Hero section | `padding="50px 30px"` | The opening section. Generous. |
-| Content section | `padding="30px 30px"` | Feature lists, body copy sections. |
-| Tight section | `padding="20px 30px"` | Footer, secondary CTAs. |
-| Text block inset | `padding="0 25px"` | Left/right padding on text inside columns. |
-| Between paragraphs | `padding-bottom="12px"` | Space between consecutive text blocks. |
-| Below heading | `padding-bottom="20px"` | Space after section heading before body. |
-| Around button | `padding="10px 25px"` | Breathing room around CTA. |
+| Hero section | `padding:50px 30px` | The opening section. Generous. |
+| Content section | `padding:30px 30px` | Feature lists, body copy sections. |
+| Tight section | `padding:20px 30px` | Footer, secondary CTAs. |
+| Text block inset | `padding:0 25px` | Left/right padding on text inside sections. |
+| Between paragraphs | `padding-bottom:12px` | Space between consecutive text blocks. |
+| Below heading | `padding-bottom:20px` | Space after section heading before body. |
+| Around button | `padding:10px 25px` | Breathing room around CTA. |
 
 **Rule:** White space is a design element. Crowded emails look amateur. Every section gets minimum 30px vertical padding. Every text block has 25px left/right inset. Never put text flush against a section edge.
 
@@ -59,12 +59,13 @@ The `html_body` field MUST contain valid MJML XML. It will be compiled to HTML a
 **Rule:** Limited palette. No new colors. The email feels Figma: clean, modern, restrained.
 
 ### Button Design
-```xml
-<mj-button href="[URL]" background-color="#0D99FF" color="#FFFFFF"
-  font-weight="600" border-radius="8px" padding="14px 32px"
-  font-size="16px" align="center">
-  [Action text]
-</mj-button>
+Use an inline-styled `<a>` tag inside a centered div:
+```html
+<div style="text-align:center;padding:10px 25px;">
+  <a href="[URL]" style="display:inline-block;background-color:#0D99FF;color:#FFFFFF;font-weight:600;border-radius:8px;padding:14px 32px;font-size:16px;text-decoration:none;font-family:'Helvetica Neue',Arial,sans-serif;">
+    [Action text]
+  </a>
+</div>
 ```
 - Button text: 2-4 words, action-oriented ("Try Figma AI", "Register now")
 - Always centered. Always Figma blue (#0D99FF).
@@ -73,72 +74,61 @@ The `html_body` field MUST contain valid MJML XML. It will be compiled to HTML a
 ### Section Patterns
 
 **Hero** — opens every email:
-```xml
-<mj-section background-color="#FFFFFF" padding="50px 30px">
-  <mj-column>
-    <mj-image src="LOGO_URL" alt="Figma" width="40px" align="center" padding-bottom="20px" />
-    <mj-text font-size="28px" font-weight="700" align="center" padding="0 25px" padding-bottom="12px">
+```html
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FFFFFF;width:100%;max-width:600px;margin:0 auto;">
+  <tr><td style="padding:50px 30px;">
+    <div style="text-align:center;padding-bottom:20px;">
+      <img src="LOGO_URL" alt="Figma" width="40" style="width:40px;max-width:100%;height:auto;border:0;" />
+    </div>
+    <div style="font-size:28px;font-weight:700;text-align:center;padding:0 25px 12px;color:#000000;font-family:'Helvetica Neue',Arial,sans-serif;">
       [One-line main message]
-    </mj-text>
-    <mj-text font-size="16px" align="center" padding="0 25px" padding-bottom="24px" color="#1E1E1E">
+    </div>
+    <div style="font-size:16px;text-align:center;padding:0 25px 24px;color:#1E1E1E;line-height:1.6;font-family:'Helvetica Neue',Arial,sans-serif;">
       [One to two sentences. Tight.]
-    </mj-text>
-    <mj-button href="[URL]">[CTA]</mj-button>
-  </mj-column>
-</mj-section>
+    </div>
+    <!-- CTA button -->
+  </td></tr>
+</table>
 ```
 
 **Feature Section** — alternating backgrounds, 1-3 features:
-```xml
-<mj-section background-color="#FAFAFA" padding="30px 30px">
-  <mj-column>
-    <mj-text font-size="20px" font-weight="600" padding="0 25px" padding-bottom="20px">
-      [Section heading]
-    </mj-text>
-    <mj-text font-size="16px" font-weight="600" padding="0 25px" padding-bottom="6px">
-      [Feature name]
-    </mj-text>
-    <mj-text font-size="16px" color="#1E1E1E" padding="0 25px" padding-bottom="20px">
-      [One sentence describing feature and benefit.]
-    </mj-text>
-    <!-- Repeat for additional features -->
-  </mj-column>
-</mj-section>
+```html
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FAFAFA;width:100%;max-width:600px;margin:0 auto;">
+  <tr><td style="padding:30px 30px;">
+    <div style="font-size:20px;font-weight:600;padding:0 25px 20px;color:#000000;font-family:'Helvetica Neue',Arial,sans-serif;">[Section heading]</div>
+    <div style="font-size:16px;font-weight:600;padding:0 25px 6px;color:#000000;font-family:'Helvetica Neue',Arial,sans-serif;">[Feature name]</div>
+    <div style="font-size:16px;color:#1E1E1E;padding:0 25px 20px;line-height:1.6;font-family:'Helvetica Neue',Arial,sans-serif;">[One sentence describing feature and benefit.]</div>
+  </td></tr>
+</table>
 ```
 
 **Social Proof** — optional, for credibility:
-```xml
-<mj-section background-color="#FFFFFF" padding="30px 30px">
-  <mj-column>
-    <mj-text font-size="16px" font-style="italic" color="#666666" align="center" padding="0 25px">
+```html
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FFFFFF;width:100%;max-width:600px;margin:0 auto;">
+  <tr><td style="padding:30px 30px;">
+    <div style="font-size:16px;font-style:italic;color:#666666;text-align:center;padding:0 25px;font-family:'Helvetica Neue',Arial,sans-serif;">
       "[Short quote or stat — one line]"
-    </mj-text>
-  </mj-column>
-</mj-section>
+    </div>
+  </td></tr>
+</table>
 ```
 
 **CTA Repeat** — always include one near the bottom:
-```xml
-<mj-section background-color="#FFFFFF" padding="20px 30px">
-  <mj-column>
-    <mj-button href="[URL]">[Same CTA as hero]</mj-button>
-  </mj-column>
-</mj-section>
-```
+Use the same button markup as the hero section inside a white table section with `padding:20px 30px`.
 
 **Footer** — closes every email:
-```xml
-<mj-section background-color="#FFFFFF" padding="20px 30px">
-  <mj-column>
-    <mj-text font-size="12px" color="#666666" align="center" padding="0 25px">
-      <a href="*|UNSUBSCRIBE|*" style="color:#666666;">Unsubscribe</a> &middot;
-      <a href="*|PREFERENCES|*" style="color:#666666;">Email Preferences</a>
-    </mj-text>
-    <mj-text font-size="12px" color="#666666" align="center" padding="0 25px">
+```html
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#FFFFFF;width:100%;max-width:600px;margin:0 auto;">
+  <tr><td style="padding:20px 30px;">
+    <div style="font-size:12px;color:#666666;text-align:center;padding:0 25px;font-family:'Helvetica Neue',Arial,sans-serif;">
+      <a href="*|UNSUBSCRIBE|*" style="color:#666666;text-decoration:none;">Unsubscribe</a> ·
+      <a href="*|PREFERENCES|*" style="color:#666666;text-decoration:none;">Email Preferences</a>
+    </div>
+    <div style="font-size:12px;color:#666666;text-align:center;padding:0 25px;font-family:'Helvetica Neue',Arial,sans-serif;">
       Figma, Inc. 760 Market St, San Francisco, CA 94102
-    </mj-text>
-  </mj-column>
-</mj-section>
+    </div>
+  </td></tr>
+</table>
 ```
 
 ---
@@ -186,19 +176,19 @@ Self-review before outputting JSON:
 - [ ] Nothing is #999999 on #FFFFFF (fails contrast)
 - [ ] Subject line under 50 characters
 - [ ] Preview text under 90 characters, complements subject
-- [ ] All `<mj-image>` have `alt` attributes
+- [ ] All `<img>` tags have `alt` attributes
 - [ ] Maximum 5 sections total
 
 ---
 
-## MJML Engineering Rules
+## HTML Engineering Rules
 
-1. All visible content in `<mj-column>` inside `<mj-section>`.
-2. Root element: `<mjml lang="en">`.
-3. Use `<mj-title>` for the email title.
-4. Never nest `<mj-section>` inside another `<mj-section>`.
-5. Use `<mj-button>` for CTAs — never raw `<a>` tags for buttons.
-6. Logo URL: `https://userimg-assets.customeriomail.com/images/client-env-226115/01KXY0PTW2FWKDYZ4377K8BM3G.png`
+1. Return a complete `<!DOCTYPE html>` document with `<html lang="en">`.
+2. Use table-based sections (`<table role="presentation">`) for layout — max-width 600px, centered.
+3. All styles must be inline on elements (no external CSS files).
+4. Use styled `<a>` tags for CTAs — not raw button elements.
+5. Logo URL: `https://userimg-assets.customeriomail.com/images/client-env-226115/01KXY0PTW2FWKDYZ4377K8BM3G.png`
+6. Do NOT use MJML tags (`<mj-*>`). Output HTML only.
 
 ## Subject Line Rules
 - Under 50 characters. No all-caps. Max 1 emoji.
@@ -220,6 +210,7 @@ Self-review before outputting JSON:
 1 = unsure. Be honest — low confidence is better than wrong.
 
 ## Version History
+- v3.1: Switched from MJML to direct HTML output for reliable serverless deployment.
 - v3.0: Full email design system — typography scale, spacing system, color palette, section patterns, visual hierarchy rules, quality checklist.
 - v2.0: Switched to MJML output. Added accessibility and engineering rules.
 - v1.0: Initial prompt.
