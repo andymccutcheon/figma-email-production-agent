@@ -41,21 +41,17 @@ ACCESS_PASSWORD = "nicolascage"
 
 
 def require_auth(f):
-    """Decorator that redirects to login if not authenticated (for page routes)."""
+    """Decorator: auth disabled — pass through to allow open access."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not session.get("authenticated"):
-            return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated
 
 
 def require_auth_api(f):
-    """Decorator that returns 401 JSON if not authenticated (for API routes)."""
+    """Decorator: auth disabled — pass through to allow open access."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if not session.get("authenticated"):
-            return jsonify({"error": "Unauthorized"}), 401
         return f(*args, **kwargs)
     return decorated
 
@@ -265,19 +261,8 @@ If the text mentions a specific Figma feature, product, or event, use your knowl
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """Cover page with password gate."""
-    error = None
-    if request.method == "POST":
-        if request.form.get("password") == ACCESS_PASSWORD:
-            session["authenticated"] = True
-            return redirect(url_for("index"))
-        error = "Incorrect password"
-
-    # If already authenticated, skip to app
-    if session.get("authenticated"):
-        return redirect(url_for("index"))
-
-    return render_template("login.html", error=error)
+    """Password gate removed — redirect to main app."""
+    return redirect(url_for("index"))
 
 
 @app.route("/")
